@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 
 export type ScenarioCategory = 
@@ -105,7 +106,8 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   fastForward: () => {
     set((state) => ({
       isFastForwarding: true,
-      currentTime: state.currentTime + 300000 // Fast forward 5 minutes
+      currentTime: state.currentTime + 300000, // Fast forward 5 minutes
+      timeRemaining: Math.max(0, state.timeRemaining - 300000) // Decrease remaining time by 5 minutes
     }));
     
     setTimeout(() => {

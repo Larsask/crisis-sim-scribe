@@ -1,9 +1,11 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useScenarioStore, type Complexity, type Duration } from '@/store/scenarioStore';
-import { scenarios } from '@/data/scenarios/allScenarios';
+import { scenarios } from '@/data/scenarios';
+import { ScenarioDefinition } from '@/types/scenario';
 
 interface ScenarioOption {
   id: string;
@@ -12,7 +14,7 @@ interface ScenarioOption {
   category: string;
 }
 
-const MOCK_SCENARIOS = Object.values(scenarios).map(scenario => ({
+const MOCK_SCENARIOS = Object.values(scenarios).map((scenario: ScenarioDefinition) => ({
   id: scenario.id,
   title: scenario.inbrief.title,
   description: scenario.inbrief.summary,

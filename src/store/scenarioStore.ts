@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 
 export type ScenarioCategory = 
@@ -21,6 +20,7 @@ interface Decision {
   impact: 'low' | 'medium' | 'high';
   consequence?: string;
   score: number;
+  followUpResponse?: string;
 }
 
 interface ScenarioState {
@@ -38,13 +38,16 @@ interface ScenarioState {
   setDuration: (duration: Duration) => void;
   startExercise: () => void;
   endExercise: () => void;
-  addDecision: (decision: string, impact: 'low' | 'medium' | 'high') => void;
+  addDecision: (decision: string, impact: 'low' | 'medium' | 'high', consequence: string, followUpResponse?: string) => void;
   updateTimeRemaining: (time: number) => void;
   getScenarioResults: () => {
     totalScore: number;
     decisions: Decision[];
     timeSpent: number;
   };
+  currentTime: number;
+  isFastForwarding: boolean;
+  fastForward: () => void;
 }
 
 export const useScenarioStore = create<ScenarioState>((set, get) => ({
@@ -62,17 +65,11 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   setDuration: (duration) => set({ duration }),
   startExercise: () => set({ isExerciseActive: true, totalScore: 0, decisions: [] }),
   endExercise: () => set({ isExerciseActive: false }),
-  addDecision: (decision, impact) => {
+  addDecision: (decision, impact, consequence, followUpResponse) => {
     const scoreMap = {
       'low': 5,
       'medium': 10,
       'high': 15
-    };
-    
-    const consequenceMap = {
-      'low': 'Minimal impact on operations, situation continues to develop.',
-      'medium': 'Moderate disruption to operations, stakeholders are concerned.',
-      'high': 'Significant impact on operations, immediate attention required.'
     };
     
     set((state) => ({
@@ -81,7 +78,8 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
         timestamp: Date.now(),
         decision,
         impact,
-        consequence: consequenceMap[impact],
+        consequence,
+        followUpResponse,
         score: scoreMap[impact]
       }],
       totalScore: state.totalScore + scoreMap[impact]
@@ -101,5 +99,17 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
       decisions: state.decisions,
       timeSpent: originalDuration! - state.timeRemaining
     };
+  },
+  currentTime: Date.now(),
+  isFastForwarding: false,
+  fastForward: () => {
+    set((state) => ({
+      isFastForwarding: true,
+      currentTime: state.currentTime + 300000 // Fast forward 5 minutes
+    }));
+    
+    setTimeout(() => {
+      set({ isFastForwarding: false });
+    }, 1000);
   }
 }));

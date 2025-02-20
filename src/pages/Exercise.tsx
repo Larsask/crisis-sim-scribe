@@ -8,6 +8,7 @@ import { AIJournalist } from '@/components/exercise/AIJournalist';
 import { PublicStatement } from '@/components/exercise/PublicStatement';
 import { ScenarioInbrief } from '@/components/exercise/ScenarioInbrief';
 import { dataBreachScenario } from '@/data/scenarios/cyberAttackScenario';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ScenarioStep {
   id: string;
@@ -70,7 +71,6 @@ const SCENARIO_STEPS: { [key: string]: ScenarioStep[] } = {
         }
       ]
     },
-    // ... Add more steps for this scenario
   ],
   'misinfo-1': [
     {
@@ -97,9 +97,7 @@ const SCENARIO_STEPS: { [key: string]: ScenarioStep[] } = {
         }
       ]
     },
-    // ... Add more steps for this scenario
   ],
-  // ... Add more scenarios
 };
 
 const Exercise = () => {
@@ -118,18 +116,26 @@ const Exercise = () => {
     updateTimeRemaining,
     addDecision,
     decisions,
-    totalScore
+    totalScore,
+    fastForward,
+    currentTime,
+    isFastForwarding
   } = useScenarioStore();
 
   const [showInbrief, setShowInbrief] = useState(true);
   const [showJournalist, setShowJournalist] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [publicStatement, setPublicStatement] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{
+    id: string;
+    type: 'system' | 'decision' | 'followup' | 'consequence';
+    content: string;
+    timestamp: number;
+  }>>([]);
 
-  const currentScenario = dataBreachScenario; // TODO: Make this dynamic based on selected scenario
+  const currentScenario = dataBreachScenario;
   const currentStep = currentScenario.steps.find(step => step.id === currentStepId);
 
-  // Redirect if not properly configured
   useEffect(() => {
     if (!category || !scenarioId || !complexity || !duration) {
       navigate('/scenario-setup');
@@ -137,7 +143,6 @@ const Exercise = () => {
     }
   }, [category, scenarioId, complexity, duration, navigate]);
 
-  // Start exercise and timer
   useEffect(() => {
     if (!isExerciseActive) {
       startExercise();
@@ -150,7 +155,6 @@ const Exercise = () => {
     }
   }, [isExerciseActive, startExercise, duration, updateTimeRemaining]);
 
-  // Timer countdown
   useEffect(() => {
     if (!isExerciseActive || timeRemaining <= 0) return;
 
@@ -163,8 +167,7 @@ const Exercise = () => {
 
   useEffect(() => {
     if (currentStep?.isJournalistCall && !showJournalist) {
-      // Random delay before showing journalist call
-      const delay = Math.random() * 10000 + 5000; // 5-15 seconds
+      const delay = Math.random() * 10000 + 5000;
       const timer = setTimeout(() => setShowJournalist(true), delay);
       return () => clearTimeout(timer);
     }
@@ -177,13 +180,75 @@ const Exercise = () => {
   };
 
   const handleDecision = (text: string, impact: 'low' | 'medium' | 'high', nextStepId: string, consequence: string) => {
-    addDecision(text, impact);
-    setCurrentStepId(nextStepId);
+    const option = currentStep?.options.find(opt => opt.text === text);
+    
+    if (option?.requiresFollowUp) {
+      setShowFollowUp({
+        question: option.requiresFollowUp.question,
+        type: option.requiresFollowUp.type,
+        onSubmit: (response: string) => {
+          addDecision(text, impact, consequence, response);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Math.random().toString(36).substr(2, 9),
+              type: 'decision',
+              content: text,
+              timestamp: Date.now()
+            },
+            {
+              id: Math.random().toString(36).substr(2, 9),
+              type: 'followup',
+              content: response,
+              timestamp: Date.now()
+            },
+            {
+              id: Math.random().toString(36).substr(2, 9),
+              type: 'consequence',
+              content: consequence,
+              timestamp: Date.now()
+            }
+          ]);
+          setCurrentStepId(nextStepId);
+        }
+      });
+    } else {
+      addDecision(text, impact, consequence);
+      setCurrentStepId(nextStepId);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'decision',
+          content: text,
+          timestamp: Date.now()
+        },
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          type: 'consequence',
+          content: consequence,
+          timestamp: Date.now()
+        }
+      ]);
+    }
     
     toast({
       title: "Decision Made",
       description: consequence,
     });
+  };
+
+  const handleFastForward = () => {
+    fastForward();
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'system',
+        content: "Time has been fast-forwarded by 5 minutes. The situation continues to evolve...",
+        timestamp: Date.now()
+      }
+    ]);
   };
 
   const handleJournalistResponse = (response: string) => {
@@ -221,65 +286,60 @@ const Exercise = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Score and Timer Display */}
         <div className="flex justify-between items-center">
           <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg">
             Score: {totalScore}
           </div>
-          <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-mono text-xl">
-            {formatTime(timeRemaining)}
+          <div className="flex gap-4 items-center">
+            <Button
+              variant="outline"
+              onClick={handleFastForward}
+              disabled={isFastForwarding}
+            >
+              Fast Forward 5m
+            </Button>
+            <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-mono text-xl">
+              {formatTime(timeRemaining)}
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content area */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Scenario Information Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Current Situation</CardTitle>
+                <CardTitle>Crisis Response Feed</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="p-4 bg-muted rounded-lg animate-in fade-in-50 duration-300">
-                    <p className="text-lg font-medium">
-                      {currentStep?.description}
-                    </p>
-                  </div>
-                  
-                  {/* Decision History */}
-                  <div className="mt-6 space-y-4">
-                    <h3 className="font-semibold text-lg">Decision History</h3>
-                    <div className="space-y-2">
-                      {decisions.map((decision) => (
-                        <div
-                          key={decision.id}
-                          className="p-4 bg-muted rounded-lg space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span>{decision.decision}</span>
-                            <span className={`px-2 py-1 rounded text-sm ${
-                              decision.impact === 'high' ? 'bg-red-100 text-red-700' :
-                              decision.impact === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-green-100 text-green-700'
-                            }`}>
-                              {decision.impact} impact
-                            </span>
-                          </div>
-                          {decision.consequence && (
-                            <p className="text-sm text-muted-foreground">
-                              Consequence: {decision.consequence}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`p-4 rounded-lg animate-in fade-in-50 duration-300 ${
+                        message.type === 'system' ? 'bg-muted' :
+                        message.type === 'decision' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                        message.type === 'followup' ? 'bg-green-50 dark:bg-green-900/20' :
+                        'bg-yellow-50 dark:bg-yellow-900/20'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium">
+                          {message.type === 'system' ? 'System Update' :
+                           message.type === 'decision' ? 'Your Decision' :
+                           message.type === 'followup' ? 'Follow-up Information' :
+                           'Consequence'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground">{message.content}</p>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Optional Components */}
             {showStatement && (
               <PublicStatement
                 onSubmit={handleStatementSubmit}
@@ -288,35 +348,30 @@ const Exercise = () => {
             )}
           </div>
 
-          {/* Decision Panel and AI Journalist */}
           <div className="space-y-6">
-            {/* Decision Panel */}
             <Card>
               <CardHeader>
-                <CardTitle>Decision Panel</CardTitle>
+                <CardTitle>Current Situation</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">
-                    Choose your next action carefully. Your decision will affect how the situation develops.
-                  </p>
-                  <div className="space-y-2">
-                    {currentStep?.options.map((option, index) => (
-                      <Button
-                        key={index}
-                        className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
-                        variant="outline"
-                        onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
-                      >
-                        {option.text}
-                      </Button>
-                    ))}
-                  </div>
+                <p className="text-muted-foreground mb-4">
+                  {currentStep?.description}
+                </p>
+                <div className="space-y-2">
+                  {currentStep?.options.map((option, index) => (
+                    <Button
+                      key={index}
+                      className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
+                      variant="outline"
+                      onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
+                    >
+                      {option.text}
+                    </Button>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* AI Journalist Call */}
             {showJournalist && (
               <AIJournalist
                 onResponse={handleJournalistResponse}

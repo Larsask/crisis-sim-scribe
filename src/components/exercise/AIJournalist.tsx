@@ -11,6 +11,11 @@ interface AIJournalistProps {
   onDecline: () => void;
 }
 
+interface SecretData {
+  name: string;
+  value: string;
+}
+
 export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
@@ -39,7 +44,7 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
       // Get the API key from Supabase
       const { data: secretData, error: secretError } = await supabase
         .from('secrets')
-        .select('value')
+        .select<'secrets', SecretData>('*')
         .eq('name', 'ELEVENLABS_API_KEY')
         .single();
 

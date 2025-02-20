@@ -1,14 +1,109 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useScenarioStore } from '@/store/scenarioStore';
 import { useToast } from "@/components/ui/use-toast";
 
+interface ScenarioStep {
+  id: string;
+  description: string;
+  options: {
+    text: string;
+    impact: 'low' | 'medium' | 'high';
+    nextStepId: string;
+    consequence: string;
+  }[];
+}
+
+const SCENARIO_STEPS: { [key: string]: ScenarioStep[] } = {
+  'cyber-1': [
+    {
+      id: 'start',
+      description: "Breaking News: A major media outlet has just reported that your company's customer database has been breached. Your phone is ringing with calls from journalists, and social media is exploding with customer concerns. Your security team is still assessing the situation.",
+      options: [
+        {
+          text: "Issue an immediate public statement acknowledging the situation",
+          impact: "medium",
+          nextStepId: "media-response",
+          consequence: "The quick response helps manage public perception, but some details in your statement may need to be corrected later as more information emerges."
+        },
+        {
+          text: "Wait for the security team's complete assessment before making any public statements",
+          impact: "high",
+          nextStepId: "security-assessment",
+          consequence: "The delay in response leads to increased public anxiety and speculation, but you have more accurate information to share."
+        },
+        {
+          text: "Focus on internal communication first",
+          impact: "low",
+          nextStepId: "internal-comms",
+          consequence: "Employees feel informed, but public uncertainty grows due to lack of official response."
+        }
+      ]
+    },
+    {
+      id: 'media-response',
+      description: "Your initial statement has been released. While it demonstrates transparency, journalists are demanding specific details about the breach. Meanwhile, your security team reports potential ongoing unauthorized access to systems.",
+      options: [
+        {
+          text: "Share detailed technical information about the breach",
+          impact: "high",
+          nextStepId: "technical-details",
+          consequence: "The transparency builds trust but may provide attackers with useful information."
+        },
+        {
+          text: "Engage a crisis management firm",
+          impact: "medium",
+          nextStepId: "crisis-management",
+          consequence: "Professional guidance helps structure your response, but adds to response time."
+        },
+        {
+          text: "Focus on immediate customer protection measures",
+          impact: "low",
+          nextStepId: "customer-protection",
+          consequence: "Customers appreciate the protective measures, but media criticism of transparency continues."
+        }
+      ]
+    },
+    // ... Add more steps for this scenario
+  ],
+  'misinfo-1': [
+    {
+      id: 'start',
+      description: "Multiple social media posts claiming your products are causing serious health issues have gone viral. The posts include seemingly convincing but fabricated evidence. Customer service is being flooded with concerned inquiries.",
+      options: [
+        {
+          text: "Launch an immediate fact-checking campaign",
+          impact: "high",
+          nextStepId: "fact-check",
+          consequence: "Your rapid response helps counter the false claims, but engaging directly with the misinformation increases its visibility."
+        },
+        {
+          text: "Contact platform moderators to report false information",
+          impact: "medium",
+          nextStepId: "platform-response",
+          consequence: "Some posts are removed, but screenshots continue to circulate."
+        },
+        {
+          text: "Release detailed product safety documentation",
+          impact: "low",
+          nextStepId: "safety-docs",
+          consequence: "The technical information reassures some customers but doesn't capture as much attention as the viral posts."
+        }
+      ]
+    },
+    // ... Add more steps for this scenario
+  ],
+  // ... Add more scenarios
+};
+
 const Exercise = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [currentStepId, setCurrentStepId] = useState<string>('start');
+  
   const { 
     category,
     scenarioId,
@@ -22,6 +117,10 @@ const Exercise = () => {
     decisions,
     totalScore
   } = useScenarioStore();
+
+  // Get current scenario steps
+  const currentScenarioSteps = scenarioId ? SCENARIO_STEPS[scenarioId] : [];
+  const currentStep = currentScenarioSteps?.find(step => step.id === currentStepId);
 
   // Redirect if not properly configured
   useEffect(() => {
@@ -61,47 +160,14 @@ const Exercise = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleDecision = (text: string, impact: 'low' | 'medium' | 'high') => {
+  const handleDecision = (text: string, impact: 'low' | 'medium' | 'high', nextStepId: string, consequence: string) => {
     addDecision(text, impact);
+    setCurrentStepId(nextStepId);
+    
     toast({
       title: "Decision Made",
-      description: `Impact: ${impact.toUpperCase()}. Your total score is now ${totalScore + (impact === 'high' ? 15 : impact === 'medium' ? 10 : 5)} points.`,
+      description: consequence,
     });
-  };
-
-  const getDecisionOptions = () => {
-    switch (category) {
-      case 'cyberattack':
-        return [
-          { text: "Shut down affected systems immediately", impact: "high" },
-          { text: "Isolate affected systems while maintaining critical services", impact: "medium" },
-          { text: "Monitor and gather more information", impact: "low" }
-        ];
-      case 'misinformation':
-        return [
-          { text: "Issue immediate public statement", impact: "high" },
-          { text: "Contact affected stakeholders privately", impact: "medium" },
-          { text: "Monitor social media response", impact: "low" }
-        ];
-      case 'insider-threat':
-        return [
-          { text: "Launch immediate internal investigation", impact: "high" },
-          { text: "Increase monitoring of suspicious activities", impact: "medium" },
-          { text: "Review security protocols", impact: "low" }
-        ];
-      case 'reputation':
-        return [
-          { text: "Issue full product recall", impact: "high" },
-          { text: "Conduct targeted quality checks", impact: "medium" },
-          { text: "Enhance customer support response", impact: "low" }
-        ];
-      default:
-        return [
-          { text: "Option A", impact: "high" },
-          { text: "Option B", impact: "medium" },
-          { text: "Option C", impact: "low" }
-        ];
-    }
   };
 
   return (
@@ -125,10 +191,12 @@ const Exercise = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  You are facing a critical situation that requires immediate attention.
-                  As the crisis manager, your decisions will impact the outcome.
-                </p>
+                <div className="p-4 bg-muted rounded-lg animate-in fade-in-50 duration-300">
+                  <p className="text-lg font-medium">
+                    {currentStep?.description}
+                  </p>
+                </div>
+                
                 <div className="mt-6 space-y-4">
                   <h3 className="font-semibold text-lg">Decision History</h3>
                   <div className="space-y-2">
@@ -171,15 +239,15 @@ const Exercise = () => {
             <CardContent>
               <div className="space-y-4">
                 <p className="text-muted-foreground">
-                  Make decisions carefully. Each choice will affect the scenario's outcome.
+                  Choose your next action carefully. Your decision will affect how the situation develops.
                 </p>
                 <div className="space-y-2">
-                  {getDecisionOptions().map((option, index) => (
+                  {currentStep?.options.map((option, index) => (
                     <Button
                       key={index}
                       className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
                       variant="outline"
-                      onClick={() => handleDecision(option.text, option.impact as 'low' | 'medium' | 'high')}
+                      onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
                     >
                       {option.text}
                     </Button>

@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useScenarioStore, type ScenarioCategory } from '@/store/scenarioStore';
@@ -47,13 +48,14 @@ const CATEGORIES: Array<{
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
   const { setCategory } = useScenarioStore();
   const [selectedCategory, setSelectedCategory] = useState<ScenarioCategory | null>(null);
 
   const handleCategorySelect = (category: ScenarioCategory) => {
     setSelectedCategory(category);
     setCategory(category);
-    // We'll implement navigation to scenario selection in the next step
+    navigate('/scenario-setup');
   };
 
   return (

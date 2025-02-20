@@ -41,12 +41,9 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
   const handleCall = async () => {
     setIsLoading(true);
     try {
-      // Get the API key from Supabase
+      // Get the API key from Supabase using RPC call
       const { data: secretData, error: secretError } = await supabase
-        .from('secrets')
-        .select<'secrets', SecretData>('*')
-        .eq('name', 'ELEVENLABS_API_KEY')
-        .single();
+        .rpc('get_secret', { secret_name: 'ELEVENLABS_API_KEY' });
 
       if (secretError || !secretData) {
         throw new Error('Failed to retrieve API key');
@@ -57,7 +54,7 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
         headers: {
           'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': secretData.value
+          'xi-api-key': secretData
         },
         body: JSON.stringify({
           text: "This is Sarah Chen from Global News. We've received reports about the ongoing situation at your company. Can you confirm the details and provide an official statement?",

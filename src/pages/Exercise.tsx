@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,98 +8,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { AIJournalist } from '@/components/exercise/AIJournalist';
 import { PublicStatement } from '@/components/exercise/PublicStatement';
 import { ScenarioInbrief } from '@/components/exercise/ScenarioInbrief';
+import { FollowUpPrompt } from '@/components/exercise/FollowUpPrompt';
 import { dataBreachScenario } from '@/data/scenarios/cyberAttackScenario';
 import { formatDistanceToNow } from 'date-fns';
-
-interface ScenarioStep {
-  id: string;
-  description: string;
-  options: {
-    text: string;
-    impact: 'low' | 'medium' | 'high';
-    nextStepId: string;
-    consequence: string;
-  }[];
-}
-
-const SCENARIO_STEPS: { [key: string]: ScenarioStep[] } = {
-  'cyber-1': [
-    {
-      id: 'start',
-      description: "Breaking News: A major media outlet has just reported that your company's customer database has been breached. Your phone is ringing with calls from journalists, and social media is exploding with customer concerns. Your security team is still assessing the situation.",
-      options: [
-        {
-          text: "Issue an immediate public statement acknowledging the situation",
-          impact: "medium",
-          nextStepId: "media-response",
-          consequence: "The quick response helps manage public perception, but some details in your statement may need to be corrected later as more information emerges."
-        },
-        {
-          text: "Wait for the security team's complete assessment before making any public statements",
-          impact: "high",
-          nextStepId: "security-assessment",
-          consequence: "The delay in response leads to increased public anxiety and speculation, but you have more accurate information to share."
-        },
-        {
-          text: "Focus on internal communication first",
-          impact: "low",
-          nextStepId: "internal-comms",
-          consequence: "Employees feel informed, but public uncertainty grows due to lack of official response."
-        }
-      ]
-    },
-    {
-      id: 'media-response',
-      description: "Your initial statement has been released. While it demonstrates transparency, journalists are demanding specific details about the breach. Meanwhile, your security team reports potential ongoing unauthorized access to systems.",
-      options: [
-        {
-          text: "Share detailed technical information about the breach",
-          impact: "high",
-          nextStepId: "technical-details",
-          consequence: "The transparency builds trust but may provide attackers with useful information."
-        },
-        {
-          text: "Engage a crisis management firm",
-          impact: "medium",
-          nextStepId: "crisis-management",
-          consequence: "Professional guidance helps structure your response, but adds to response time."
-        },
-        {
-          text: "Focus on immediate customer protection measures",
-          impact: "low",
-          nextStepId: "customer-protection",
-          consequence: "Customers appreciate the protective measures, but media criticism of transparency continues."
-        }
-      ]
-    },
-  ],
-  'misinfo-1': [
-    {
-      id: 'start',
-      description: "Multiple social media posts claiming your products are causing serious health issues have gone viral. The posts include seemingly convincing but fabricated evidence. Customer service is being flooded with concerned inquiries.",
-      options: [
-        {
-          text: "Launch an immediate fact-checking campaign",
-          impact: "high",
-          nextStepId: "fact-check",
-          consequence: "Your rapid response helps counter the false claims, but engaging directly with the misinformation increases its visibility."
-        },
-        {
-          text: "Contact platform moderators to report false information",
-          impact: "medium",
-          nextStepId: "platform-response",
-          consequence: "Some posts are removed, but screenshots continue to circulate."
-        },
-        {
-          text: "Release detailed product safety documentation",
-          impact: "low",
-          nextStepId: "safety-docs",
-          consequence: "The technical information reassures some customers but doesn't capture as much attention as the viral posts."
-        }
-      ]
-    },
-  ],
-};
 
 const Exercise = () => {
   const navigate = useNavigate();
@@ -125,6 +37,12 @@ const Exercise = () => {
   const [showInbrief, setShowInbrief] = useState(true);
   const [showJournalist, setShowJournalist] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
+  const [showFollowUp, setShowFollowUp] = useState<{
+    question: string;
+    type: 'text' | 'phone' | 'email' | 'time';
+    validation?: string;
+    onSubmit: (response: string) => void;
+  } | null>(null);
   const [publicStatement, setPublicStatement] = useState<string | null>(null);
   const [messages, setMessages] = useState<Array<{
     id: string;
@@ -186,6 +104,7 @@ const Exercise = () => {
       setShowFollowUp({
         question: option.requiresFollowUp.question,
         type: option.requiresFollowUp.type,
+        validation: option.requiresFollowUp.validation,
         onSubmit: (response: string) => {
           addDecision(text, impact, consequence, response);
           setMessages(prev => [
@@ -210,6 +129,7 @@ const Exercise = () => {
             }
           ]);
           setCurrentStepId(nextStepId);
+          setShowFollowUp(null);
         }
       });
     } else {
@@ -344,6 +264,15 @@ const Exercise = () => {
               <PublicStatement
                 onSubmit={handleStatementSubmit}
                 onPostpone={() => setShowStatement(false)}
+              />
+            )}
+
+            {showFollowUp && (
+              <FollowUpPrompt
+                question={showFollowUp.question}
+                type={showFollowUp.type}
+                validation={showFollowUp.validation}
+                onSubmit={showFollowUp.onSubmit}
               />
             )}
           </div>

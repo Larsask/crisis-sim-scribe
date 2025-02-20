@@ -1,10 +1,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ScenarioInbrief } from '@/types/scenario';
+import type { ScenarioInbrief as ScenarioInbriefType } from '@/types/scenario';
 
 interface ScenarioInbriefProps {
-  inbrief: ScenarioInbrief;
+  inbrief: ScenarioInbriefType;
   onAcknowledge: () => void;
 }
 

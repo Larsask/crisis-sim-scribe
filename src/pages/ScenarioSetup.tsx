@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -78,8 +77,7 @@ const ScenarioSetup = () => {
     if (!selectedScenario || !selectedComplexity || !selectedDuration) {
       return;
     }
-    // We'll implement the exercise page next
-    // navigate('/exercise');
+    navigate('/exercise');
   };
 
   return (

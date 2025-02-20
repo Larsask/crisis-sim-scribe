@@ -15,7 +15,9 @@ const Exercise = () => {
     isExerciseActive,
     startExercise,
     timeRemaining,
-    updateTimeRemaining
+    updateTimeRemaining,
+    addDecision,
+    decisions
   } = useScenarioStore();
 
   // Redirect if not properly configured
@@ -57,6 +59,30 @@ const Exercise = () => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Mock decision options based on scenario type
+  const getDecisionOptions = () => {
+    switch (category) {
+      case 'cyberattack':
+        return [
+          { text: "Shut down affected systems immediately", impact: "high" },
+          { text: "Isolate affected systems while maintaining critical services", impact: "medium" },
+          { text: "Monitor and gather more information", impact: "low" }
+        ];
+      case 'misinformation':
+        return [
+          { text: "Issue immediate public statement", impact: "high" },
+          { text: "Contact affected stakeholders privately", impact: "medium" },
+          { text: "Monitor social media response", impact: "low" }
+        ];
+      default:
+        return [
+          { text: "Option A", impact: "high" },
+          { text: "Option B", impact: "medium" },
+          { text: "Option C", impact: "low" }
+        ];
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
@@ -77,7 +103,26 @@ const Exercise = () => {
                   You are facing a critical situation that requires immediate attention.
                   As the crisis manager, your decisions will impact the outcome.
                 </p>
-                {/* Event Feed will go here */}
+                <div className="mt-6 space-y-4">
+                  <h3 className="font-semibold text-lg">Decision History</h3>
+                  <div className="space-y-2">
+                    {decisions.map((decision) => (
+                      <div
+                        key={decision.id}
+                        className="p-3 bg-muted rounded-lg flex items-center justify-between"
+                      >
+                        <span>{decision.decision}</span>
+                        <span className={`px-2 py-1 rounded text-sm ${
+                          decision.impact === 'high' ? 'bg-red-100 text-red-700' :
+                          decision.impact === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {decision.impact} impact
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -93,15 +138,16 @@ const Exercise = () => {
                   Make decisions carefully. Each choice will affect the scenario's outcome.
                 </p>
                 <div className="space-y-2">
-                  <Button className="w-full" variant="outline">
-                    Option A
-                  </Button>
-                  <Button className="w-full" variant="outline">
-                    Option B
-                  </Button>
-                  <Button className="w-full" variant="outline">
-                    Option C
-                  </Button>
+                  {getDecisionOptions().map((option, index) => (
+                    <Button
+                      key={index}
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => addDecision(option.text, option.impact as 'low' | 'medium' | 'high')}
+                    >
+                      {option.text}
+                    </Button>
+                  ))}
                 </div>
               </div>
             </CardContent>

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,24 @@ const MOCK_SCENARIOS: ScenarioOption[] = [
     description: "Customer data has been exposed. Manage the breach notification and remediation process.",
     category: "cyberattack"
   },
-  // We'll add more scenarios per category later
+  {
+    id: "misinfo-1",
+    title: "Viral Misinformation",
+    description: "False information about your organization is spreading rapidly on social media.",
+    category: "misinformation"
+  },
+  {
+    id: "insider-1",
+    title: "Insider Trading Suspicion",
+    description: "Unusual trading patterns suggest potential insider trading activity.",
+    category: "insider-threat"
+  },
+  {
+    id: "reputation-1",
+    title: "Product Safety Crisis",
+    description: "Reports of product defects are causing widespread concern among customers.",
+    category: "reputation"
+  }
 ];
 
 const COMPLEXITY_OPTIONS: Array<{ value: Complexity; label: string; description: string }> = [
@@ -55,7 +73,7 @@ const ScenarioSetup = () => {
   const navigate = useNavigate();
   const { 
     category, 
-    setScenario, 
+    setScenario,
     setComplexity, 
     setDuration,
     complexity: selectedComplexity,
@@ -77,6 +95,7 @@ const ScenarioSetup = () => {
     if (!selectedScenario || !selectedComplexity || !selectedDuration) {
       return;
     }
+    setScenario(selectedScenario);
     navigate('/exercise');
   };
 
@@ -105,7 +124,6 @@ const ScenarioSetup = () => {
                   }`}
                   onClick={() => {
                     setSelectedScenario(scenario.id);
-                    setScenario(scenario.id);
                   }}
                 >
                   <CardHeader>
@@ -168,6 +186,7 @@ const ScenarioSetup = () => {
               size="lg"
               onClick={handleStart}
               disabled={!selectedScenario || !selectedComplexity || !selectedDuration}
+              className="animate-in fade-in-50 duration-500"
             >
               Start Exercise
             </Button>

@@ -1,10 +1,13 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useScenarioStore } from '@/store/scenarioStore';
 import { useToast } from "@/components/ui/use-toast";
+import { AIJournalist } from '@/components/exercise/AIJournalist';
+import { PublicStatement } from '@/components/exercise/PublicStatement';
+import { ScenarioInbrief } from '@/components/exercise/ScenarioInbrief';
+import { dataBreachScenario } from '@/data/scenarios/cyberAttackScenario';
 
 interface ScenarioStep {
   id: string;
@@ -118,9 +121,13 @@ const Exercise = () => {
     totalScore
   } = useScenarioStore();
 
-  // Get current scenario steps
-  const currentScenarioSteps = scenarioId ? SCENARIO_STEPS[scenarioId] : [];
-  const currentStep = currentScenarioSteps?.find(step => step.id === currentStepId);
+  const [showInbrief, setShowInbrief] = useState(true);
+  const [showJournalist, setShowJournalist] = useState(false);
+  const [showStatement, setShowStatement] = useState(false);
+  const [publicStatement, setPublicStatement] = useState<string | null>(null);
+
+  const currentScenario = dataBreachScenario; // TODO: Make this dynamic based on selected scenario
+  const currentStep = currentScenario.steps.find(step => step.id === currentStepId);
 
   // Redirect if not properly configured
   useEffect(() => {
@@ -154,6 +161,15 @@ const Exercise = () => {
     return () => clearInterval(timer);
   }, [isExerciseActive, timeRemaining, updateTimeRemaining]);
 
+  useEffect(() => {
+    if (currentStep?.isJournalistCall && !showJournalist) {
+      // Random delay before showing journalist call
+      const delay = Math.random() * 10000 + 5000; // 5-15 seconds
+      const timer = setTimeout(() => setShowJournalist(true), delay);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, showJournalist]);
+
   const formatTime = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
@@ -170,6 +186,38 @@ const Exercise = () => {
     });
   };
 
+  const handleJournalistResponse = (response: string) => {
+    addDecision(
+      "Responded to journalist inquiry",
+      "high",
+      "Your response has been recorded and may appear in future media coverage."
+    );
+    setShowJournalist(false);
+  };
+
+  const handleStatementSubmit = (statement: string) => {
+    setPublicStatement(statement);
+    setShowStatement(false);
+    addDecision(
+      "Released public statement",
+      "high",
+      "Your statement is now your official position and will be referenced by media."
+    );
+  };
+
+  if (showInbrief) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-4xl mx-auto">
+          <ScenarioInbrief
+            inbrief={currentScenario.inbrief}
+            onAcknowledge={() => setShowInbrief(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -184,78 +232,98 @@ const Exercise = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Scenario Information */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Current Scenario</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg animate-in fade-in-50 duration-300">
-                  <p className="text-lg font-medium">
-                    {currentStep?.description}
-                  </p>
-                </div>
-                
-                <div className="mt-6 space-y-4">
-                  <h3 className="font-semibold text-lg">Decision History</h3>
-                  <div className="space-y-2">
-                    {decisions.map((decision) => (
-                      <div
-                        key={decision.id}
-                        className="p-4 bg-muted rounded-lg space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{decision.decision}</span>
-                          <span className={`px-2 py-1 rounded text-sm ${
-                            decision.impact === 'high' ? 'bg-red-100 text-red-700' :
-                            decision.impact === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
-                            {decision.impact} impact
-                          </span>
+          {/* Main content area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Scenario Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Situation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg animate-in fade-in-50 duration-300">
+                    <p className="text-lg font-medium">
+                      {currentStep?.description}
+                    </p>
+                  </div>
+                  
+                  {/* Decision History */}
+                  <div className="mt-6 space-y-4">
+                    <h3 className="font-semibold text-lg">Decision History</h3>
+                    <div className="space-y-2">
+                      {decisions.map((decision) => (
+                        <div
+                          key={decision.id}
+                          className="p-4 bg-muted rounded-lg space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{decision.decision}</span>
+                            <span className={`px-2 py-1 rounded text-sm ${
+                              decision.impact === 'high' ? 'bg-red-100 text-red-700' :
+                              decision.impact === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {decision.impact} impact
+                            </span>
+                          </div>
+                          {decision.consequence && (
+                            <p className="text-sm text-muted-foreground">
+                              Consequence: {decision.consequence}
+                            </p>
+                          )}
                         </div>
-                        {decision.consequence && (
-                          <p className="text-sm text-muted-foreground">
-                            Consequence: {decision.consequence}
-                          </p>
-                        )}
-                        <p className="text-sm text-primary">
-                          Score: +{decision.score} points
-                        </p>
-                      </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Optional Components */}
+            {showStatement && (
+              <PublicStatement
+                onSubmit={handleStatementSubmit}
+                onPostpone={() => setShowStatement(false)}
+              />
+            )}
+          </div>
+
+          {/* Decision Panel and AI Journalist */}
+          <div className="space-y-6">
+            {/* Decision Panel */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Decision Panel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-muted-foreground">
+                    Choose your next action carefully. Your decision will affect how the situation develops.
+                  </p>
+                  <div className="space-y-2">
+                    {currentStep?.options.map((option, index) => (
+                      <Button
+                        key={index}
+                        className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
+                        variant="outline"
+                        onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
+                      >
+                        {option.text}
+                      </Button>
                     ))}
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Decision Panel */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Decision Panel</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Choose your next action carefully. Your decision will affect how the situation develops.
-                </p>
-                <div className="space-y-2">
-                  {currentStep?.options.map((option, index) => (
-                    <Button
-                      key={index}
-                      className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
-                      variant="outline"
-                      onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
-                    >
-                      {option.text}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            {/* AI Journalist Call */}
+            {showJournalist && (
+              <AIJournalist
+                onResponse={handleJournalistResponse}
+                onDecline={() => setShowJournalist(false)}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

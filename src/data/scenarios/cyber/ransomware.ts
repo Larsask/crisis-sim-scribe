@@ -1,11 +1,12 @@
+
 import { ScenarioDefinition } from '../types';
 
 export const ransomwareScenario: ScenarioDefinition = {
   id: 'cyber-1',
   category: 'cyberattack',
   inbrief: {
-    title: "Ransomware Crisis",
-    summary: "A sophisticated ransomware attack has encrypted critical systems across multiple offices. The attackers are demanding payment in cryptocurrency, threatening to delete all data.",
+    title: "Critical Ransomware Attack",
+    summary: "A sophisticated ransomware attack has encrypted critical systems across multiple offices. The attackers are demanding payment in cryptocurrency, threatening to delete all data within 48 hours.",
     objectives: [
       "Contain the ransomware spread",
       "Assess system compromise scope",
@@ -27,7 +28,7 @@ export const ransomwareScenario: ScenarioDefinition = {
       "External Security Consultants",
       "Emergency Communication Channels"
     ],
-    initialSituation: "At 6:30 AM, the IT team detected widespread system encryption across your network. A ransom note demands 50 Bitcoin within 48 hours. Initial reports show 60% of systems are affected, including customer databases and financial records."
+    initialSituation: "At 6:30 AM, your monitoring systems detect widespread encryption of critical files across the network. A ransom note demands 50 Bitcoin within 48 hours, threatening to delete all data and expose sensitive information. Initial assessment shows 60% of systems affected, including customer databases and financial records. The encryption is spreading rapidly."
   },
   steps: [
     {

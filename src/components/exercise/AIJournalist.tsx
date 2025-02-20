@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from '@/integrations/supabase/client';
 
 interface AIJournalistProps {
   onResponse: (response: string) => void;
@@ -16,6 +17,7 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [response, setResponse] = useState('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let audio: HTMLAudioElement | null = null;
@@ -32,13 +34,25 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
   }, [audioUrl]);
 
   const handleCall = async () => {
+    setIsLoading(true);
     try {
+      // Get the API key from Supabase
+      const { data: secretData, error: secretError } = await supabase
+        .from('secrets')
+        .select('value')
+        .eq('name', 'ELEVENLABS_API_KEY')
+        .single();
+
+      if (secretError || !secretData) {
+        throw new Error('Failed to retrieve API key');
+      }
+
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL', {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': 'your-api-key-here'
+          'xi-api-key': secretData.value
         },
         body: JSON.stringify({
           text: "This is Sarah Chen from Global News. We've received reports about the ongoing situation at your company. Can you confirm the details and provide an official statement?",
@@ -55,6 +69,7 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
+      setIsRecording(true);
 
     } catch (error) {
       console.error('Error generating speech:', error);
@@ -63,6 +78,8 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
         description: "Failed to connect with the journalist. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -126,13 +143,10 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
         <div className="space-y-2">
           <Button 
             className="w-full"
-            onClick={() => {
-              handleCall();
-              setIsRecording(true);
-            }}
-            disabled={isRecording || countdown !== null}
+            onClick={handleCall}
+            disabled={isRecording || countdown !== null || isLoading}
           >
-            Answer Call
+            {isLoading ? "Connecting..." : "Answer Call"}
           </Button>
           {isRecording && (
             <Button 

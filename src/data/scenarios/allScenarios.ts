@@ -1,4 +1,3 @@
-
 import { ScenarioDefinition } from '@/types/scenario';
 
 export const cyberAttackScenario: ScenarioDefinition = {
@@ -441,6 +440,79 @@ export const realTimeScenario: ScenarioDefinition = {
   ]
 };
 
+export const insiderThreatScenario: ScenarioDefinition = {
+  id: 'insider-1',
+  category: 'insider-threat',
+  inbrief: {
+    title: "Suspicious Employee Activity Alert",
+    summary: "A senior engineer with privileged access has been detected transferring large amounts of proprietary data outside normal working hours. The activity suggests potential intellectual property theft.",
+    objectives: [
+      "Identify scope of compromised data",
+      "Preserve evidence for investigation",
+      "Minimize data exfiltration",
+      "Maintain operational security",
+      "Prepare legal response"
+    ],
+    stakeholders: [
+      "IT Security Team",
+      "Human Resources",
+      "Legal Department",
+      "Executive Management",
+      "Affected Department Heads"
+    ],
+    resources: [
+      "Security Monitoring Tools",
+      "Access Logs",
+      "HR Records",
+      "Legal Team",
+      "Digital Forensics Team"
+    ],
+    initialSituation: "It's 3:45 AM when your security monitoring system flags suspicious data transfers from a senior engineer's workstation. The employee in question, Dr. Sarah Chen, has been with the company for 8 years and leads critical R&D projects. Initial logs show large data transfers to external storage devices and unusual access patterns to sensitive project files."
+  },
+  steps: [
+    {
+      id: 'start',
+      description: "The senior engineer's workstation is flagged for suspicious activity. Security teams are investigating.",
+      options: [
+        {
+          text: "Lock down workstation",
+          impact: "high",
+          nextStepId: "lockdown",
+          consequence: "Workstation is secured but may disrupt ongoing work.",
+          requiresFollowUp: {
+            question: "Specify which systems to freeze and which to maintain:",
+            type: "text",
+            validation: "length:200"
+          }
+        },
+        {
+          text: "Deploy forensic team",
+          impact: "medium",
+          nextStepId: "forensic-team",
+          consequence: "Forensic team deployed but may take time.",
+          requiresFollowUp: {
+            question: "Define the scope and timeline for the forensic investigation:",
+            type: "text",
+            validation: "length:150"
+          }
+        },
+        {
+          text: "Contact HR and legal",
+          impact: "high",
+          nextStepId: "contact-hr-legal",
+          consequence: "HR and legal are informed but may delay response.",
+          requiresFollowUp: {
+            question: "What specific information will you share with HR and legal?",
+            type: "text",
+            validation: "length:200"
+          }
+        }
+      ],
+      timeLimit: 120
+    }
+  ]
+};
+
 export const scenarios = {
   cyberAttackScenario,
   misinformationScenario,
@@ -448,5 +520,5 @@ export const scenarios = {
   aiPoweredScenario,
   hybridScenario,
   realTimeScenario,
-  insiderThreatScenario: socialEngineeringScenario // Keeping the previously defined scenario
+  insiderThreatScenario
 };

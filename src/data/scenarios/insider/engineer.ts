@@ -1,3 +1,4 @@
+
 import { ScenarioDefinition } from '../types';
 
 export const engineerThreatScenario: ScenarioDefinition = {

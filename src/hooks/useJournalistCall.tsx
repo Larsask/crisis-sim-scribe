@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -14,15 +15,13 @@ export const useJournalistCall = () => {
   const handleJournalistResponse = (response: string) => {
     crisisMemoryManager.addInteraction('Press', 'journalist-call', response);
     
-    // Show acknowledgment toast that stays until dismissed
     toast({
       title: "Response Sent",
       description: "The journalist will consider your statement for their story.",
-      duration: null // Stays until dismissed
+      duration: null
     });
 
     if (journalistCallState === 'failed' || journalistCallState === 'text-mode') {
-      // Additional handling for text mode responses
       crisisMemoryManager.addInteraction('Press', 'text-response', response);
     }
 
@@ -33,16 +32,15 @@ export const useJournalistCall = () => {
   const handleCallDecline = () => {
     setJournalistCallState('declined');
     
-    // Show persistent notification about declined call
     toast({
       title: "Call Declined",
       description: "The journalist may publish without your input. Would you like to send a text statement instead?",
       duration: null,
-      action: (
-        <Button variant="secondary" onClick={() => setJournalistCallState('text-mode')}>
-          Send Text
-        </Button>
-      )
+      action: React.createElement(Button, {
+        variant: "secondary",
+        onClick: () => setJournalistCallState('text-mode'),
+        children: "Send Text"
+      })
     });
   };
 

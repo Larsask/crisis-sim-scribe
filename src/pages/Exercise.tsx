@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,8 @@ import { ScenarioInbrief } from '@/components/exercise/ScenarioInbrief';
 import { FollowUpPrompt } from '@/components/exercise/FollowUpPrompt';
 import { scenarios } from '@/data/scenarios';
 import { formatDistanceToNow } from 'date-fns';
+import { ExerciseQuestionnaire } from '@/components/exercise/ExerciseQuestionnaire';
+import { ExerciseSummary } from '@/components/exercise/ExerciseSummary';
 
 const Exercise = () => {
   const navigate = useNavigate();
@@ -50,11 +51,16 @@ const Exercise = () => {
     content: string;
     timestamp: number;
   }>>([]);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [questionnaireResponses, setQuestionnaireResponses] = useState<{
+    situationHandling: string;
+    lessonsLearned: string;
+    keyTakeaways: string[];
+  } | null>(null);
 
-  // Get the correct scenario based on the selected scenarioId
   const getCurrentScenario = () => {
     if (!scenarioId) return null;
-    // Convert scenarioId to match the scenario object keys (e.g., 'reputation-1' to 'executiveMisconductScenario')
     const scenarioMap: { [key: string]: string } = {
       'reputation-1': 'executiveMisconductScenario',
       'cyber-1': 'ransomwareScenario',
@@ -63,7 +69,6 @@ const Exercise = () => {
       'hybrid-1': 'supplyChainScenario',
       'realtime-1': 'liveEventScenario',
       'insider-1': 'engineerThreatScenario',
-      // Add mappings for all other scenarios
     };
     
     const scenarioKey = scenarioMap[scenarioId];
@@ -79,7 +84,6 @@ const Exercise = () => {
       return;
     }
 
-    // Log the current scenario for debugging
     console.log('Current Scenario:', currentScenario);
   }, [category, scenarioId, complexity, duration, navigate, currentScenario]);
 
@@ -112,6 +116,105 @@ const Exercise = () => {
       return () => clearTimeout(timer);
     }
   }, [currentStep, showJournalist]);
+
+  useEffect(() => {
+    if (timeRemaining <= 0) {
+      handleEndExercise();
+    }
+  }, [timeRemaining]);
+
+  useEffect(() => {
+    if (!showInbrief && !showQuestionnaire && !showSummary) {
+      const eventInterval = setInterval(() => {
+        const shouldTriggerEvent = Math.random() < 0.3;
+        if (shouldTriggerEvent) {
+          generateDynamicEvent();
+        }
+      }, 30000);
+
+      return () => clearInterval(eventInterval);
+    }
+  }, [showInbrief, showQuestionnaire, showSummary, currentStepId]);
+
+  const generateDynamicEvent = () => {
+    const possibleEvents = [
+      {
+        type: 'social_media',
+        description: 'A trending hashtag related to the situation is gaining traction.',
+        options: [
+          {
+            text: "Monitor social media sentiment",
+            impact: "low" as const,
+            consequence: "Gained better understanding of public perception."
+          },
+          {
+            text: "Engage with key influencers",
+            impact: "medium" as const,
+            consequence: "Some influencers are willing to hear your side."
+          }
+        ]
+      },
+      {
+        type: 'media_update',
+        description: 'A major news outlet is preparing to run a story.',
+        options: [
+          {
+            text: "Provide official statement",
+            impact: "high" as const,
+            consequence: "Statement included in the coverage, showing proactive response."
+          },
+          {
+            text: "Request delay for fact-checking",
+            impact: "medium" as const,
+            consequence: "Outlet agrees to verify facts but story will still run."
+          }
+        ]
+      },
+      {
+        type: 'stakeholder_reaction',
+        description: 'Key stakeholders are demanding immediate updates.',
+        options: [
+          {
+            text: "Hold emergency briefing",
+            impact: "high" as const,
+            consequence: "Stakeholders appreciate direct communication but expect concrete actions."
+          },
+          {
+            text: "Send detailed written update",
+            impact: "medium" as const,
+            consequence: "Update sent but some stakeholders want more direct engagement."
+          }
+        ]
+      }
+    ];
+
+    const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
+    
+    setMessages(prev => [...prev, {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'system',
+      content: event.description,
+      timestamp: Date.now()
+    }]);
+
+    if (currentStep) {
+      currentStep.options = [...currentStep.options, ...event.options];
+    }
+  };
+
+  const handleEndExercise = () => {
+    setShowQuestionnaire(true);
+  };
+
+  const handleQuestionnaireComplete = (responses: {
+    situationHandling: string;
+    lessonsLearned: string;
+    keyTakeaways: string[];
+  }) => {
+    setQuestionnaireResponses(responses);
+    setShowQuestionnaire(false);
+    setShowSummary(true);
+  };
 
   const formatTime = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -217,6 +320,27 @@ const Exercise = () => {
     return null;
   }
 
+  if (showSummary && questionnaireResponses) {
+    return (
+      <ExerciseSummary
+        scenarioTitle={currentScenario.inbrief.title}
+        duration={duration || ''}
+        decisions={decisions}
+        questionnaire={questionnaireResponses}
+      />
+    );
+  }
+
+  if (showQuestionnaire) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-4xl mx-auto">
+          <ExerciseQuestionnaire onComplete={handleQuestionnaireComplete} />
+        </div>
+      </div>
+    );
+  }
+
   if (showInbrief) {
     return (
       <div className="min-h-screen bg-background p-6">
@@ -234,8 +358,10 @@ const Exercise = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
-          <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg">
-            Score: {totalScore}
+          <div className="text-lg font-semibold">
+            Impact Events: High ({decisions.filter(d => d.impact === 'high').length}) | 
+            Medium ({decisions.filter(d => d.impact === 'medium').length}) | 
+            Low ({decisions.filter(d => d.impact === 'low').length})
           </div>
           <div className="flex gap-4 items-center">
             <Button
@@ -244,6 +370,12 @@ const Exercise = () => {
               disabled={isFastForwarding}
             >
               Fast Forward 5m
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleEndExercise}
+            >
+              End Exercise
             </Button>
             <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-mono text-xl">
               {formatTime(timeRemaining)}

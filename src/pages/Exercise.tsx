@@ -97,6 +97,7 @@ const Exercise = () => {
     const baseEvent: CrisisEvent = {
       id: Math.random().toString(36).substr(2, 9),
       type: 'event',
+      content: "Teams are analyzing the situation and preparing next steps.",
       timestamp: Date.now() + 2000,
       status: 'active',
       severity: 'medium'

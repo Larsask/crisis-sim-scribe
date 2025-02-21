@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
 import { useEventManagement } from '@/hooks/useEventManagement';
@@ -12,7 +11,8 @@ import { FollowUpMessage, ExerciseConfig, AIResponse } from '@/types/crisis-enha
 import { scenarios } from '@/data/scenarios';
 import { useNavigate } from 'react-router-dom';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
-import { DecisionOption } from '@/types/crisis';
+import { DecisionOption, CrisisEvent } from '@/types/crisis';
+import { generateDynamicUpdates } from '@/utils/scenario-generator';
 
 export const ExerciseProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -22,6 +22,10 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
   const [availableOptions, setAvailableOptions] = useState<DecisionOption[]>([]);
   const [followUpMessage, setFollowUpMessage] = useState<FollowUpMessage | null>(null);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
+  const [exerciseStartTime] = useState<number>(Date.now());
+  const [isExerciseEnded, setIsExerciseEnded] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState<CrisisEvent[]>([]);
+
   const [config, setConfig] = useState<ExerciseConfig>({
     timeBasedEvents: {
       frequency: 'medium',
@@ -56,7 +60,13 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { events, addEvent, addEvents, handleDecisionEvent } = useEventManagement();
   const { messages, addMessage, removeMessage, handleStakeholderResponse } = useMessageManagement();
-  const { showJournalistCall, setShowJournalistCall, handleJournalistResponse } = useJournalistCall();
+  const { 
+    showJournalistCall, 
+    setShowJournalistCall, 
+    handleJournalistResponse,
+    journalistCallState,
+    setJournalistCallState
+  } = useJournalistCall();
 
   const getScenario = () => {
     const scenarioKey = Object.keys(scenarios).find(key => 
@@ -77,10 +87,20 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     initialSituation: "Please select a valid scenario"
   };
 
-  const handleDecision = async (text: string, isCustom: boolean) => {
+  const handleDecision = useCallback(async (text: string, isCustom: boolean) => {
     const crisisState = crisisMemoryManager.getCrisisState();
     const newEvents = handleDecisionEvent(text, crisisState.severity);
     
+    const updates = await generateDynamicUpdates(text, crisisState, events);
+    setPendingUpdates(prev => [...prev, ...updates]);
+
+    const newOptions = await aiService.generateNewOptions({
+      decision: text,
+      crisisState,
+      pastEvents: events
+    });
+    setAvailableOptions(newOptions);
+
     const response = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: crisisState.severity,
@@ -92,21 +112,29 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
 
     setAiResponse(response);
 
-    if (Math.random() > 0.7) {
+    if (shouldTriggerJournalistCall(crisisState, events)) {
+      setJournalistCallState('incoming');
       setShowJournalistCall(true);
     }
-  };
+  }, [events, config, setAvailableOptions, handleDecisionEvent]);
 
-  const handleFollowUpResponse = (response: string) => {
+  const handleFollowUpResponse = useCallback((response: string) => {
     handleDecision(response, true);
     setFollowUpMessage(null);
-  };
+  }, [handleDecision]);
 
   const handleTimeSkip = async () => {
     setIsTimeSkipping(true);
     await fastForward();
+    const updates = await generateDynamicUpdates(null, crisisMemoryManager.getCrisisState(), events);
+    setPendingUpdates(prev => [...prev, ...updates]);
     setIsTimeSkipping(false);
   };
+
+  const endExercise = useCallback(() => {
+    setIsExerciseEnded(true);
+    navigate('/exercise/assessment');
+  }, [navigate]);
 
   useEffect(() => {
     if (!category || !scenarioId || !complexity || !duration) {
@@ -149,6 +177,42 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [isExerciseActive, startExercise, duration, updateTimeRemaining, currentScenario]);
 
+  useEffect(() => {
+    if (!isExerciseActive || isExerciseEnded) return;
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - exerciseStartTime;
+      const remaining = Math.max(0, duration ? durationToMs(duration) - elapsed : 0);
+      
+      updateTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        endExercise();
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isExerciseActive, isExerciseEnded, exerciseStartTime, duration, updateTimeRemaining, endExercise]);
+
+  useEffect(() => {
+    if (!isExerciseActive || isExerciseEnded) return;
+
+    const updateInterval = setInterval(async () => {
+      if (pendingUpdates.length > 0) {
+        const update = pendingUpdates[0];
+        addEvent(update);
+        setPendingUpdates(prev => prev.slice(1));
+      } else {
+        const newUpdates = await generateDynamicUpdates(null, crisisMemoryManager.getCrisisState(), events);
+        if (newUpdates.length > 0) {
+          setPendingUpdates(newUpdates);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(updateInterval);
+  }, [isExerciseActive, isExerciseEnded, pendingUpdates, events, addEvent]);
+
   const value = {
     config,
     setConfig,
@@ -163,13 +227,16 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     timeRemaining,
     scenarioBrief,
     showJournalistCall,
+    isExerciseEnded,
+    journalistCallState,
     onDecision: handleDecision,
     onTimeSkip: handleTimeSkip,
     onFollowUpResponse: handleFollowUpResponse,
     onStakeholderResponse: handleStakeholderResponse,
     onMessageDismiss: removeMessage,
     onJournalistResponse: handleJournalistResponse,
-    setShowJournalistCall
+    setShowJournalistCall,
+    endExercise
   };
 
   return (

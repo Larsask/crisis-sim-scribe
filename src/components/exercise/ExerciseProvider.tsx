@@ -159,18 +159,22 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       addEvent(update);
 
       if (update.type === 'stakeholder' && update.severity === 'high') {
-        const message = await generateStakeholderMessage(crisisState, [...events, update]);
-        if (message) {
-          addMessage({
-            id: Math.random().toString(36).substr(2, 9),
-            sender: update.content.split(':')[0],
-            content: message.content,
-            timestamp: Date.now(),
-            type: message.type,
-            urgency: message.urgency,
-            status: 'unread',
-            responseDeadline: Date.now() + 300000
-          });
+        try {
+          const message = await generateStakeholderMessage(crisisState, [...events, update]);
+          if (message) {
+            addMessage({
+              id: Math.random().toString(36).substr(2, 9),
+              sender: update.content.split(':')[0],
+              content: message.content,
+              timestamp: Date.now(),
+              type: message.type,
+              urgency: message.urgency,
+              status: 'unread',
+              responseDeadline: Date.now() + 300000
+            });
+          }
+        } catch (error) {
+          console.error('Error generating stakeholder message:', error);
         }
       }
     }

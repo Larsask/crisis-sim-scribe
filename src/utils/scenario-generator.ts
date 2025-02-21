@@ -3,6 +3,9 @@ import { CrisisEvent } from '@/types/crisis';
 import { aiService } from '@/services/ai-service';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
 
+type EventType = "stakeholder" | "media" | "internal" | "government" | "competitor" | 
+                "event" | "decision" | "consequence" | "system" | "time-update" | "escalation";
+
 export const generateDynamicUpdates = async (
   decision: string | null,
   crisisState: any,
@@ -11,17 +14,16 @@ export const generateDynamicUpdates = async (
 ): Promise<CrisisEvent[]> => {
   const updates: CrisisEvent[] = [];
   
-  // Calculate number of events to generate based on crisis severity and time skipped
+  // Calculate number of events to generate
   const numEvents = timeSkipped ? 
     (crisisState.severity === 'high' ? 4 : 3) : 
     (Math.random() > 0.7 ? 1 : 0);
 
   // Generate base events
   for(let i = 0; i < numEvents; i++) {
-    const eventTypes = ['media', 'stakeholder', 'internal', 'regulatory'];
+    const eventTypes: EventType[] = ['media', 'stakeholder', 'internal', 'government'];
     const selectedType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
     
-    // Generate event content based on type
     let content;
     let severity;
     
@@ -88,7 +90,7 @@ export const shouldTriggerJournalistCall = (
   timeSkipped: boolean = false
 ): boolean => {
   const lastCallTime = events
-    .filter(e => e.type === 'call')
+    .filter(e => e.type === 'stakeholder' && e.content.includes('journalist'))
     .sort((a, b) => b.timestamp - a.timestamp)[0]?.timestamp;
 
   const timeSinceLastCall = lastCallTime ? Date.now() - lastCallTime : Infinity;
@@ -102,15 +104,14 @@ export const shouldTriggerJournalistCall = (
   );
 };
 
-export const generateStakeholderMessage = (
+export const generateStakeholderMessage = async (
   crisisState: any,
   events: CrisisEvent[]
-): { type: 'email' | 'text'; content: string; urgency: 'normal' | 'urgent' | 'critical' } | null => {
+): Promise<{ type: 'email' | 'text'; content: string; urgency: 'normal' | 'urgent' | 'critical' } | null> => {
   const recentEvents = events.slice(-5);
   const hasHighSeverity = recentEvents.some(e => e.severity === 'high');
   const hasUrgentMedia = recentEvents.some(e => e.type === 'media' && e.status === 'escalated');
   
-  // Determine communication type based on urgency and past interactions
   const lastInteraction = events
     .filter(e => e.type === 'stakeholder')
     .sort((a, b) => b.timestamp - a.timestamp)[0];
@@ -119,24 +120,27 @@ export const generateStakeholderMessage = (
   const type = shouldUseEmail ? 'email' : 'text';
 
   if (hasHighSeverity || hasUrgentMedia) {
+    const content = await aiService.generateStakeholderUpdate(crisisState, recentEvents);
     return {
       type,
-      content: await aiService.generateStakeholderUpdate(crisisState, recentEvents),
+      content,
       urgency: 'critical'
     };
   }
 
   if (crisisState.publicTrust < 50) {
+    const content = await aiService.generateStakeholderUpdate(crisisState, recentEvents);
     return {
       type,
-      content: await aiService.generateStakeholderUpdate(crisisState, recentEvents),
+      content,
       urgency: 'urgent'
     };
   }
 
+  const content = await aiService.generateStakeholderUpdate(crisisState, recentEvents);
   return {
     type: 'text',
-    content: await aiService.generateStakeholderUpdate(crisisState, recentEvents),
+    content,
     urgency: 'normal'
   };
 };

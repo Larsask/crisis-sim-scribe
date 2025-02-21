@@ -122,7 +122,9 @@ const Exercise = () => {
         content: "Your recent decisions are causing significant concern. We need to reassess our approach immediately.",
         timestamp: Date.now(),
         urgency: 'critical',
-        responseDeadline: Date.now() + 300000 // 5 minutes
+        responseDeadline: Date.now() + 300000,
+        type: 'email',
+        status: 'unread'
       };
       setMessages(prev => [...prev, stakeholderReaction]);
     }
@@ -222,7 +224,9 @@ const Exercise = () => {
         content: "We need to formulate our next steps carefully. What direction should we take?",
         timestamp: Date.now(),
         urgency: 'urgent',
-        responseDeadline: Date.now() + 600000 // 10 minutes
+        responseDeadline: Date.now() + 600000,
+        type: 'text',
+        status: 'unread'
       };
       setMessages(prev => [...prev, newMessage]);
     }

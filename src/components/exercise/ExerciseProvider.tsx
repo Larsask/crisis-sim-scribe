@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -5,7 +6,7 @@ import { aiService } from '@/services/ai-service';
 import { crisisTimelineService } from '@/services/crisis-timeline';
 import { useToast } from "@/components/ui/use-toast";
 import { CrisisEvent, StakeholderMessage, DecisionOption } from '@/types/crisis';
-import { TimeBasedEvent, AIResponse, FollowUpMessage } from '@/types/crisis-enhanced';
+import { TimeBasedEvent, AIResponse, FollowUpMessage, ExerciseConfig } from '@/types/crisis-enhanced';
 import { scenarios } from '@/data/scenarios';
 import { useNavigate } from 'react-router-dom';
 

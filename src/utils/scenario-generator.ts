@@ -14,7 +14,7 @@ export const generateDynamicUpdates = async (
   if (timeSkipped) {
     updates.push({
       id: Math.random().toString(36).substr(2, 9),
-      type: 'time-update',
+      type: 'system',
       content: "Time passes. The situation continues to develop...",
       timestamp: Date.now(),
       status: 'active',
@@ -25,7 +25,7 @@ export const generateDynamicUpdates = async (
     if (crisisState.mediaAttention > 50) {
       updates.push({
         id: Math.random().toString(36).substr(2, 9),
-        type: 'consequence',
+        type: 'media',
         content: "Media speculation intensifies due to lack of official response.",
         timestamp: Date.now() + 1000,
         status: 'escalated',
@@ -39,7 +39,7 @@ export const generateDynamicUpdates = async (
     const mediaReaction = await aiService.generateMediaReaction(decision, crisisState);
     updates.push({
       id: Math.random().toString(36).substr(2, 9),
-      type: 'event',
+      type: 'media',
       content: mediaReaction,
       timestamp: Date.now() + 2000,
       status: 'active',
@@ -64,7 +64,7 @@ export const generateDynamicUpdates = async (
   if (crisisState.publicTrust < 30 || crisisState.mediaAttention > 80) {
     updates.push({
       id: Math.random().toString(36).substr(2, 9),
-      type: 'escalation',
+      type: 'internal',
       content: 'Crisis situation is escalating rapidly. Immediate action required.',
       timestamp: Date.now() + 1000,
       status: 'escalated',

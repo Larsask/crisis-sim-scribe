@@ -1,7 +1,7 @@
 
 export interface TimeBasedEvent {
-  triggerTime: number; // in milliseconds from start
-  type: 'media' | 'stakeholder' | 'internal' | 'government' | 'competitor';
+  triggerTime: number;
+  type: 'stakeholder' | 'media' | 'internal' | 'government' | 'competitor' | 'event' | 'decision' | 'consequence' | 'system' | 'time-update' | 'escalation';
   content: string;
   severity: 'low' | 'medium' | 'high';
   requiresResponse: boolean;

@@ -51,7 +51,6 @@ export class CrisisTimeline {
           }
         ]
       }
-      // Add more events as needed
     ];
   }
 
@@ -80,12 +79,12 @@ export class CrisisTimeline {
     // Generate additional dynamic updates for the skipped time
     const updates = await generateDynamicUpdates(null, crisisState, [], true);
     
-    // Convert updates to TimeBasedEvents
-    const dynamicEvents = updates.map(update => ({
+    // Convert CrisisEvents to TimeBasedEvents
+    const dynamicEvents: TimeBasedEvent[] = updates.map(update => ({
       triggerTime: update.timestamp - this.startTime,
       type: update.type,
       content: update.content,
-      severity: update.severity,
+      severity: update.severity || 'medium',
       requiresResponse: update.status === 'escalated',
       options: []
     }));

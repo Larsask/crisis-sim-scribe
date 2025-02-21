@@ -1,7 +1,7 @@
 
 export interface CrisisEvent {
   id: string;
-  type: 'event' | 'decision' | 'consequence' | 'system';
+  type: 'stakeholder' | 'media' | 'internal' | 'government' | 'competitor' | 'event' | 'decision' | 'consequence' | 'system' | 'time-update' | 'escalation';
   content: string;
   timestamp: number;
   parentEventId?: string;

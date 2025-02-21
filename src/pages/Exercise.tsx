@@ -401,6 +401,72 @@ const Exercise = () => {
     setLastEventTime(Date.now());
   };
 
+  const handleQuestionnaireComplete = (responses: {
+    situationHandling: string;
+    lessonsLearned: string;
+    keyTakeaways: string[];
+  }) => {
+    setQuestionnaireResponses(responses);
+    setShowQuestionnaire(false);
+    setShowSummary(true);
+  };
+
+  const handleEndExercise = () => {
+    setShowQuestionnaire(true);
+  };
+
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const renderMessages = () => {
+    return messages.map((message) => {
+      const relatedOptions = currentStep?.options.filter(opt => opt.groupId === message.groupId);
+      
+      return (
+        <div key={message.id} className="space-y-4">
+          <div className={`p-4 rounded-lg animate-in fade-in-50 duration-300 ${
+            message.type === 'system' ? 'bg-muted' :
+            message.type === 'decision' ? 'bg-blue-50 dark:bg-blue-900/20' :
+            message.type === 'followup' ? 'bg-green-50 dark:bg-green-900/20' :
+            'bg-yellow-50 dark:bg-yellow-900/20'
+          }`}>
+            <div className="flex justify-between items-start mb-2">
+              <span className="font-medium">
+                {message.type === 'system' ? 'System Update' :
+                 message.type === 'decision' ? 'Your Decision' :
+                 message.type === 'followup' ? 'Follow-up Information' :
+                 'Consequence'}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+              </span>
+            </div>
+            <p className="text-muted-foreground">{message.content}</p>
+          </div>
+          
+          {relatedOptions && relatedOptions.length > 0 && (
+            <div className="ml-4 space-y-2">
+              {relatedOptions.map((option, index) => (
+                <Button
+                  key={index}
+                  className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
+                  variant="outline"
+                  onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
+                >
+                  {option.text}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
   if (!currentScenario) {
     navigate('/scenario-setup');
     return null;

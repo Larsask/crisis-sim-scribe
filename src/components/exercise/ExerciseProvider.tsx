@@ -107,12 +107,24 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     const updates = await generateDynamicUpdates(text, crisisState, events);
     setPendingUpdates(prev => [...prev, ...updates]);
 
-    const newOptions = await aiService.generateNewOptions({
-      decision: text,
-      crisisState,
-      pastEvents: events
-    });
-    setAvailableOptions(newOptions);
+    try {
+      const newOptions = await aiService.generateNewOptions({
+        decision: text,
+        crisisState,
+        pastEvents: events
+      });
+      setAvailableOptions(newOptions);
+    } catch (error) {
+      console.error('Error generating new options:', error);
+      setAvailableOptions([
+        {
+          id: '1',
+          text: 'Monitor the situation',
+          impact: 'low',
+          consequence: 'Allows time for proper assessment'
+        }
+      ]);
+    }
 
     const response = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AIResponse } from '@/types/crisis-enhanced';
 import { DecisionOption } from '@/types/crisis';
@@ -18,7 +17,83 @@ interface NewsArticleParams {
   tone: 'neutral' | 'critical' | 'supportive';
 }
 
+interface NewOptionsContext {
+  decision: string;
+  crisisState: any;
+  pastEvents: any[];
+}
+
 export const aiService = {
+  generateNewOptions: async (context: NewOptionsContext): Promise<DecisionOption[]> => {
+    try {
+      const { data: secretData, error: secretError } = await supabase
+        .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
+
+      if (secretError || !secretData) {
+        throw new Error('Failed to retrieve API key');
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${secretData}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `Generate 3-4 realistic next actions for a crisis situation.
+              Consider:
+              - Previous decision: ${context.decision}
+              - Crisis severity: ${context.crisisState.severity}
+              - Recent events: ${JSON.stringify(context.pastEvents.slice(-2))}
+              
+              Each option should include:
+              1. Clear action text
+              2. Potential impact (low/medium/high)
+              3. Likely consequence`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      const data = await response.json();
+      const result = data.choices[0].message.content;
+
+      // Parse the response into DecisionOption format
+      const options = result.split('\n')
+        .filter(line => line.trim())
+        .map(line => ({
+          id: Math.random().toString(36).substr(2, 9),
+          text: line.includes(':') ? line.split(':')[1].trim() : line,
+          impact: (context.crisisState.severity || 'medium') as 'low' | 'medium' | 'high',
+          consequence: 'This action will affect the crisis trajectory'
+        }));
+
+      return options.slice(0, 4); // Return max 4 options
+    } catch (error) {
+      console.error('Error generating new options:', error);
+      return [
+        {
+          id: '1',
+          text: 'Monitor the situation',
+          impact: 'low',
+          consequence: 'Allows time for proper assessment'
+        },
+        {
+          id: '2',
+          text: 'Engage with stakeholders',
+          impact: 'medium',
+          consequence: 'Maintains communication channels'
+        }
+      ];
+    }
+  },
+
   generateResponse: async (decision: string, context: AIRequestContext): Promise<AIResponse> => {
     try {
       const { data: secretData, error: secretError } = await supabase

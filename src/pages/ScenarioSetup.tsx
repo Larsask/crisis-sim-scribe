@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useScenarioStore, type Complexity, type Duration } from '@/store/scenarioStore';
 import { scenarios } from '@/data/scenarios';
 import { ScenarioDefinition } from '@/types/scenario';
+import { ArrowLeft } from 'lucide-react';
 
 interface ScenarioOption {
   id: string;
@@ -78,6 +78,16 @@ const ScenarioSetup = () => {
   return (
     <div className="min-h-screen bg-background animate-in">
       <div className="content-container py-12">
+        <div className="flex justify-start mb-6">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/')}
+            className="flex items-center"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Categories
+          </Button>
+        </div>
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight mb-4">
             Configure Your Exercise

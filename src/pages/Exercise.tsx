@@ -64,18 +64,38 @@ const Exercise = () => {
 
   const getCurrentScenario = () => {
     if (!scenarioId) return null;
-    const scenarioMap: { [key: string]: string } = {
-      'reputation-1': 'executiveMisconductScenario',
-      'cyber-1': 'ransomwareScenario',
-      'misinfo-1': 'viralDisinfoScenario',
-      'ai-1': 'aiHiringScenario',
-      'hybrid-1': 'supplyChainScenario',
-      'realtime-1': 'liveEventScenario',
+    const scenarioMap = {
       'insider-1': 'engineerThreatScenario',
+      'insider-2': 'executiveLeakScenario',
+      'insider-3': 'contractorBreachScenario',
+      'insider-4': 'employeeSabotageScenario',
+      'insider-5': 'privilegedAccessScenario',
+      'cyber-1': 'ransomwareScenario',
+      'cyber-2': 'dataBreachScenario',
+      'cyber-3': 'ddosScenario',
+      'cyber-4': 'phishingScenario',
+      'cyber-5': 'insiderThreatScenario',
+      'misinfo-1': 'viralDisinfoScenario',
+      'misinfo-2': 'politicalDisinfoScenario',
+      'misinfo-3': 'scientificDisinfoScenario',
+      'misinfo-4': 'productDisinfoScenario',
+      'misinfo-5': 'financialDisinfoScenario',
+      'ai-1': 'aiHiringScenario',
+      'ai-2': 'aiPrivacyScenario',
+      'ai-3': 'aiDecisionScenario',
+      'ai-4': 'aiSecurityScenario',
+      'ai-5': 'aiEthicsScenario',
+      'hybrid-1': 'supplyChainScenario',
+      'hybrid-3': 'socialEngineeringScenario',
+      'realtime-2': 'serviceOutageScenario',
+      'realtime-3': 'systemFailureScenario',
+      'realtime-4': 'securityBreachScenario',
+      'realtime-5': 'infrastructureScenario',
+      'reputation-3': 'employeeScandalScenario',
+      'reputation-5': 'customerDataScenario'
     };
     
-    const scenarioKey = scenarioMap[scenarioId];
-    return scenarioKey ? scenarios[scenarioKey as keyof typeof scenarios] : null;
+    return scenarios[scenarioMap[scenarioId] as keyof typeof scenarios] || null;
   };
 
   const currentScenario = getCurrentScenario();

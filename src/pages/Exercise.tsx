@@ -52,6 +52,7 @@ const Exercise = () => {
     type: 'system' | 'decision' | 'followup' | 'consequence';
     content: string;
     timestamp: number;
+    groupId?: string;
   }>>([]);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -164,126 +165,149 @@ const Exercise = () => {
   }, [showInbrief, showQuestionnaire, showSummary, lastEventTime]);
 
   const generateDynamicEvent = () => {
-    const possibleEvents: Array<{
-      type: string;
-      description: string;
-      options: ScenarioOption[];
-    }> = [
+    const pendingDecisions = currentStep?.options.length || 0;
+    if (pendingDecisions > 5) return;
+
+    const timeSinceLastEvent = Date.now() - lastEventTime;
+    if (timeSinceLastEvent < 45000) return;
+
+    const possibleEvents = [
       {
-        type: 'social_media',
-        description: 'A trending hashtag related to the situation is gaining traction.',
-        options: [
-          {
-            text: "Monitor social media sentiment",
-            impact: "low" as const,
-            nextStepId: currentStepId,
-            consequence: "Gained better understanding of public perception."
-          },
-          {
-            text: "Engage with key influencers",
-            impact: "medium" as const,
-            nextStepId: currentStepId,
-            consequence: "Some influencers are willing to hear your side."
-          }
-        ]
+        type: 'direct_consequence',
+        description: `Following your ${decisions.length > 0 ? 'decision to ' + decisions[decisions.length - 1].decision : 'recent actions'}...`,
+        options: getConsequentialOptions()
       },
       {
-        type: 'media_update',
-        description: 'A major news outlet is preparing to run a story.',
-        options: [
-          {
-            text: "Provide official statement",
-            impact: "high" as const,
-            nextStepId: currentStepId,
-            consequence: "Statement included in the coverage, showing proactive response.",
-            requiresFollowUp: {
-              question: "Draft your statement for the media outlet:",
-              type: "text" as const,
-              validation: "length:200"
-            }
-          },
-          {
-            text: "Request delay for fact-checking",
-            impact: "medium" as const,
-            nextStepId: currentStepId,
-            consequence: "Outlet agrees to verify facts but story will still run."
-          }
-        ]
+        type: 'stakeholder_update',
+        description: 'A key stakeholder is responding to the situation.',
+        options: getStakeholderOptions()
       },
       {
-        type: 'stakeholder_reaction',
-        description: 'Key stakeholders are demanding immediate updates.',
-        options: [
-          {
-            text: "Hold emergency briefing",
-            impact: "high" as const,
-            nextStepId: currentStepId,
-            consequence: "Stakeholders appreciate direct communication but expect concrete actions.",
-            requiresFollowUp: {
-              question: "Outline the key points for your emergency briefing:",
-              type: "text" as const,
-              validation: "length:200"
-            }
-          },
-          {
-            text: "Send detailed written update",
-            impact: "medium" as const,
-            nextStepId: currentStepId,
-            consequence: "Update sent but some stakeholders want more direct engagement.",
-            requiresFollowUp: {
-              question: "Draft your detailed update message:",
-              type: "text" as const,
-              validation: "length:200"
-            }
-          }
-        ]
+        type: 'media_development',
+        description: 'The media narrative is evolving.',
+        options: getMediaOptions()
       }
     ];
 
-    const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
-    
     setMessages(prev => [...prev, {
       id: Math.random().toString(36).substr(2, 9),
       type: 'system',
-      content: event.description,
+      content: "Analyzing situation developments...",
       timestamp: Date.now()
     }]);
 
-    if (currentStep) {
-      const newOptions = [...currentStep.options, ...event.options];
-      currentStep.options = newOptions;
-    }
+    setTimeout(() => {
+      const event = possibleEvents[Math.floor(Math.random() * possibleEvents.length)];
+      const eventGroupId = Math.random().toString(36).substr(2, 9);
+      
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'system',
+        content: event.description,
+        timestamp: Date.now(),
+        groupId: eventGroupId
+      }]);
+
+      if (currentStep) {
+        const newOptions = event.options.map((option, index) => ({
+          ...option,
+          text: `[${decisions.length + index + 1}] ${option.text}`,
+          groupId: eventGroupId
+        }));
+        currentStep.options = [...currentStep.options, ...newOptions];
+      }
+    }, 8000);
+
+    setLastEventTime(Date.now());
   };
 
-  useEffect(() => {
-    if (timeRemaining <= 0) {
-      handleEndExercise();
-    }
-  }, [timeRemaining]);
+  const getConsequentialOptions = () => {
+    const lastDecision = decisions[decisions.length - 1];
+    if (!lastDecision) return [];
 
-  const handleEndExercise = () => {
-    setShowQuestionnaire(true);
+    return [
+      {
+        text: "Address emerging concerns",
+        impact: "medium" as const,
+        nextStepId: currentStepId,
+        consequence: "Your response helps clarify the situation.",
+        requiresFollowUp: {
+          question: "How will you address these concerns?",
+          type: "text" as const,
+          validation: "length:200"
+        }
+      },
+      {
+        text: "Revise approach based on feedback",
+        impact: "high" as const,
+        nextStepId: currentStepId,
+        consequence: "Strategy adjusted based on new information.",
+        requiresFollowUp: {
+          question: "What adjustments will you make?",
+          type: "text" as const,
+          validation: "length:200"
+        }
+      }
+    ];
   };
 
-  const handleQuestionnaireComplete = (responses: {
-    situationHandling: string;
-    lessonsLearned: string;
-    keyTakeaways: string[];
-  }) => {
-    setQuestionnaireResponses(responses);
-    setShowQuestionnaire(false);
-    setShowSummary(true);
+  const getStakeholderOptions = () => {
+    return [
+      {
+        text: "Schedule emergency briefing",
+        impact: "high" as const,
+        nextStepId: currentStepId,
+        consequence: "Stakeholders appreciate the direct communication.",
+        requiresFollowUp: {
+          question: "What key points will you cover?",
+          type: "text" as const,
+          validation: "length:200"
+        }
+      },
+      {
+        text: "Provide written update",
+        impact: "medium" as const,
+        nextStepId: currentStepId,
+        consequence: "Update distributed to all stakeholders.",
+        requiresFollowUp: {
+          question: "Draft your update:",
+          type: "text" as const,
+          validation: "length:200"
+        }
+      }
+    ];
   };
 
-  const formatTime = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const getMediaOptions = () => {
+    return [
+      {
+        text: "Issue clarifying statement",
+        impact: "high" as const,
+        nextStepId: currentStepId,
+        consequence: "Your statement shapes the narrative.",
+        requiresFollowUp: {
+          question: "Draft your statement:",
+          type: "text" as const,
+          validation: "length:200"
+        }
+      },
+      {
+        text: "Monitor media coverage",
+        impact: "low" as const,
+        nextStepId: currentStepId,
+        consequence: "Better understanding of public perception gained."
+      }
+    ];
   };
 
   const handleDecision = (text: string, impact: 'low' | 'medium' | 'high', nextStepId: string, consequence: string) => {
     const option = currentStep?.options.find(opt => opt.text === text);
-    setLastEventTime(Date.now());
+    
+    toast({
+      title: "Important!",
+      description: "Your response will impact how the situation develops. Consider carefully.",
+      duration: 5000
+    });
     
     if (option?.requiresFollowUp) {
       setShowFollowUp({
@@ -481,30 +505,7 @@ const Exercise = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`p-4 rounded-lg animate-in fade-in-50 duration-300 ${
-                        message.type === 'system' ? 'bg-muted' :
-                        message.type === 'decision' ? 'bg-blue-50 dark:bg-blue-900/20' :
-                        message.type === 'followup' ? 'bg-green-50 dark:bg-green-900/20' :
-                        'bg-yellow-50 dark:bg-yellow-900/20'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium">
-                          {message.type === 'system' ? 'System Update' :
-                           message.type === 'decision' ? 'Your Decision' :
-                           message.type === 'followup' ? 'Follow-up Information' :
-                           'Consequence'}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDistanceToNow(message.timestamp, { addSuffix: true })}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground">{message.content}</p>
-                    </div>
-                  ))}
+                  {renderMessages()}
                 </div>
               </CardContent>
             </Card>

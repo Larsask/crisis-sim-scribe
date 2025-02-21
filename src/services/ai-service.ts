@@ -11,6 +11,12 @@ interface AIRequestContext {
   includeSuggestions?: boolean;
 }
 
+interface NewsArticleParams {
+  headline: string;
+  context: string;
+  tone: 'neutral' | 'critical' | 'supportive';
+}
+
 const generateAIResponse = async (
   decision: string,
   context: AIRequestContext
@@ -34,36 +40,67 @@ const generateAIResponse = async (
         messages: [
           {
             role: 'system',
-            content: `You are an AI crisis management assistant. Analyze decisions and generate realistic, context-aware responses. Consider past decisions, stakeholder expectations, and potential consequences. Current crisis severity: ${context.currentSeverity}. Stakeholder mood: ${context.stakeholderMood}. Style: ${context.style || 'neutral'}. Tone: ${context.tone || 'formal'}.`
+            content: `You are an AI crisis management assistant analyzing real-time decisions in a crisis scenario. 
+            Generate detailed, realistic responses considering:
+            - Current crisis severity: ${context.currentSeverity}
+            - Stakeholder mood: ${context.stakeholderMood}
+            - Communication style: ${context.style || 'neutral'}
+            - Response tone: ${context.tone || 'formal'}
+            
+            Format the response as:
+            1. Main analysis
+            2. List of immediate consequences
+            3. Key stakeholder reactions
+            4. Suggested next actions`
           },
           {
             role: 'user',
-            content: `The user has made this decision: "${decision}". Their past decisions were: ${context.pastDecisions.join(', ')}. Generate a detailed response with consequences and stakeholder reactions.`
+            content: `Decision made: "${decision}"
+            Previous decisions: ${context.pastDecisions.join(', ')}
+            
+            Provide a comprehensive analysis of this decision's impact.`
           }
-        ]
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
       })
     });
 
     const data = await response.json();
     const result = data.choices[0].message.content;
 
+    // Parse the AI response into structured format
+    const sections = result.split('\n\n');
+    const mainResponse = sections[0] || '';
+    
+    const consequences = sections[1]?.split('\n')
+      .filter(line => line.startsWith('-'))
+      .map(line => line.substring(2)) || 
+      ["Impact being assessed"];
+
+    const stakeholderReactions = [{
+      group: "Media",
+      reaction: sections[2] || "Analyzing the situation",
+      urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
+    }];
+
+    const suggestedActions = sections[3]?.split('\n')
+      .filter(line => line.startsWith('-'))
+      .map(line => ({
+        text: line.substring(2),
+        impact: context.currentSeverity as 'low' | 'medium' | 'high',
+        consequence: "Could affect stakeholder trust and media coverage"
+      })) || [{
+        text: "Monitor situation",
+        impact: "medium",
+        consequence: "Allows time for proper assessment"
+      }];
+
     return {
-      mainResponse: result,
-      consequences: ["Immediate impact on public trust", "Media coverage intensifies"],
-      stakeholderReactions: [
-        {
-          group: "Media",
-          reaction: "Increased scrutiny of company policies",
-          urgency: "urgent"
-        }
-      ],
-      suggestedActions: [
-        {
-          text: "Issue a detailed public statement",
-          impact: "high",
-          consequence: "Could help restore public trust but might attract more scrutiny"
-        }
-      ]
+      mainResponse,
+      consequences,
+      stakeholderReactions,
+      suggestedActions
     };
   } catch (error) {
     console.error('Error generating AI response:', error);
@@ -88,6 +125,50 @@ const generateAIResponse = async (
   }
 };
 
+const generateNewsArticle = async ({ headline, context, tone }: NewsArticleParams): Promise<string> => {
+  try {
+    const { data: secretData, error: secretError } = await supabase
+      .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
+
+    if (secretError || !secretData) {
+      throw new Error('Failed to retrieve API key');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${secretData}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an experienced journalist writing a news article about an ongoing crisis. 
+            Your tone should be ${tone}. Write a concise, factual article that maintains journalistic standards.`
+          },
+          {
+            role: 'user',
+            content: `Write a news article with the headline: "${headline}"
+            Context: ${context}
+            Include quotes from relevant stakeholders and maintain a ${tone} tone throughout the article.`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('Error generating news article:', error);
+    return `Breaking News: ${headline}\n\nDeveloping story. More details to follow.`;
+  }
+};
+
 export const aiService = {
-  generateResponse: generateAIResponse
+  generateResponse: generateAIResponse,
+  generateNewsArticle
 };

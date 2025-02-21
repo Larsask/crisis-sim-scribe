@@ -36,7 +36,7 @@ const generateAIResponse = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4',  // Updated to use GPT-4
         messages: [
           {
             role: 'system',
@@ -49,9 +49,9 @@ const generateAIResponse = async (
             
             Format the response as:
             1. Main analysis
-            2. List of immediate consequences
-            3. Key stakeholder reactions
-            4. Suggested next actions`
+            2. List of immediate consequences (start each with -)
+            3. Key stakeholder reactions (start each with -)
+            4. Suggested next actions (start each with -)`
           },
           {
             role: 'user',
@@ -61,7 +61,7 @@ const generateAIResponse = async (
             Provide a comprehensive analysis of this decision's impact.`
           }
         ],
-        temperature: 0.7,
+        temperature: 0.8,  // Increased for more creative responses
         max_tokens: 1000
       })
     });
@@ -78,11 +78,17 @@ const generateAIResponse = async (
       .map(line => line.substring(2)) || 
       ["Impact being assessed"];
 
-    const stakeholderReactions = [{
-      group: "Media",
-      reaction: sections[2] || "Analyzing the situation",
-      urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
-    }];
+    const stakeholderReactions = sections[2]?.split('\n')
+      .filter(line => line.startsWith('-'))
+      .map(line => ({
+        group: "Stakeholder",
+        reaction: line.substring(2),
+        urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
+      })) || [{
+        group: "Media",
+        reaction: "Analyzing the situation",
+        urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
+      }];
 
     const suggestedActions = sections[3]?.split('\n')
       .filter(line => line.startsWith('-'))
@@ -99,7 +105,7 @@ const generateAIResponse = async (
     return {
       mainResponse,
       consequences,
-      stakeholderReactions,
+      stakeholderReactions: stakeholderReactions.slice(0, 3), // Limit to 3 reactions
       suggestedActions
     };
   } catch (error) {
@@ -141,7 +147,7 @@ const generateNewsArticle = async ({ headline, context, tone }: NewsArticleParam
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4',  // Updated to use GPT-4
         messages: [
           {
             role: 'system',

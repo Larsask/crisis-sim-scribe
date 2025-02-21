@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { X, MessageCircle, Clock } from 'lucide-react';
+import { X, MessageCircle, Clock, Mail, Phone } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,12 @@ interface Message {
   image?: string;
   urgency: 'normal' | 'urgent' | 'critical';
   responseDeadline?: number;
+  type: 'email' | 'text' | 'call';
+  status: 'unread' | 'read' | 'responded' | 'dismissed';
+  responseOptions?: {
+    text: string;
+    impact: 'positive' | 'neutral' | 'negative';
+  }[];
 }
 
 interface StakeholderMessagesProps {
@@ -28,6 +34,7 @@ export const StakeholderMessages = ({
 }: StakeholderMessagesProps) => {
   const [responses, setResponses] = useState<{[key: string]: string}>({});
   const [timeLeft, setTimeLeft] = useState<{[key: string]: number}>({});
+  const [dismissTimers, setDismissTimers] = useState<{[key: string]: NodeJS.Timeout}>({});
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -47,6 +54,48 @@ export const StakeholderMessages = ({
     return () => clearInterval(timer);
   }, [messages]);
 
+  const handleDismiss = (messageId: string) => {
+    // Start a 2-minute timer before triggering the "ignored" consequence
+    const timer = setTimeout(() => {
+      onDismiss(messageId);
+    }, 120000); // 2 minutes
+
+    setDismissTimers(prev => ({
+      ...prev,
+      [messageId]: timer
+    }));
+  };
+
+  const cancelDismissTimer = (messageId: string) => {
+    if (dismissTimers[messageId]) {
+      clearTimeout(dismissTimers[messageId]);
+      setDismissTimers(prev => {
+        const newTimers = { ...prev };
+        delete newTimers[messageId];
+        return newTimers;
+      });
+    }
+  };
+
+  const getMessageIcon = (type: 'email' | 'text' | 'call', urgency: 'normal' | 'urgent' | 'critical') => {
+    const iconProps = {
+      className: `h-5 w-5 ${
+        urgency === 'critical' ? 'text-red-500' :
+        urgency === 'urgent' ? 'text-yellow-500' :
+        'text-blue-500'
+      }`
+    };
+
+    switch (type) {
+      case 'email':
+        return <Mail {...iconProps} />;
+      case 'call':
+        return <Phone {...iconProps} />;
+      default:
+        return <MessageCircle {...iconProps} />;
+    }
+  };
+
   const formatTimeLeft = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -59,17 +108,13 @@ export const StakeholderMessages = ({
         <Card key={message.id} className="p-4 animate-slide-in">
           <div className="flex justify-between items-start mb-2">
             <div className="flex items-center gap-2">
-              <MessageCircle className={`h-5 w-5 ${
-                message.urgency === 'critical' ? 'text-red-500' :
-                message.urgency === 'urgent' ? 'text-yellow-500' :
-                'text-blue-500'
-              }`} />
+              {getMessageIcon(message.type, message.urgency)}
               <span className="font-medium">{message.sender}</span>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onDismiss(message.id)}
+              onClick={() => handleDismiss(message.id)}
               className="h-6 w-6"
             >
               <X className="h-4 w-4" />
@@ -94,12 +139,35 @@ export const StakeholderMessages = ({
           )}
 
           <div className="space-y-2">
+            {message.responseOptions && (
+              <div className="space-y-1 mb-2">
+                {message.responseOptions.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-left justify-start"
+                    onClick={() => {
+                      cancelDismissTimer(message.id);
+                      onRespond(message.id, option.text);
+                    }}
+                  >
+                    {option.text}
+                  </Button>
+                ))}
+              </div>
+            )}
+            
             <Textarea
               value={responses[message.id] || ''}
-              onChange={(e) => setResponses(prev => ({
-                ...prev,
-                [message.id]: e.target.value
-              }))}
+              onChange={(e) => {
+                setResponses(prev => ({
+                  ...prev,
+                  [message.id]: e.target.value
+                }));
+                // Cancel the dismiss timer if user starts typing
+                cancelDismissTimer(message.id);
+              }}
               placeholder="Type your response..."
               className="text-sm"
             />
@@ -108,6 +176,7 @@ export const StakeholderMessages = ({
               className="w-full"
               onClick={() => {
                 if (responses[message.id]) {
+                  cancelDismissTimer(message.id);
                   onRespond(message.id, responses[message.id]);
                   setResponses(prev => ({...prev, [message.id]: ''}));
                 }

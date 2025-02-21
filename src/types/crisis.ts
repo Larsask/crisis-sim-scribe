@@ -1,3 +1,4 @@
+
 export interface CrisisEvent {
   id: string;
   type: 'event' | 'decision' | 'consequence' | 'system';
@@ -17,6 +18,12 @@ export interface StakeholderMessage {
   image?: string;
   urgency: 'normal' | 'urgent' | 'critical';
   responseDeadline?: number;
+  type: 'email' | 'text' | 'call';
+  status: 'unread' | 'read' | 'responded' | 'dismissed';
+  responseOptions?: {
+    text: string;
+    impact: 'positive' | 'neutral' | 'negative';
+  }[];
 }
 
 export interface DecisionOption {

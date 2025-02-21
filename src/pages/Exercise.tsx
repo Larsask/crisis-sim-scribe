@@ -12,6 +12,7 @@ import { scenarios } from '@/data/scenarios';
 import { formatDistanceToNow } from 'date-fns';
 import { ExerciseQuestionnaire } from '@/components/exercise/ExerciseQuestionnaire';
 import { ExerciseSummary } from '@/components/exercise/ExerciseSummary';
+import { ScenarioOption } from '@/types/scenario';
 
 const Exercise = () => {
   const navigate = useNavigate();

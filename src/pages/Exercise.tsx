@@ -145,11 +145,13 @@ const Exercise = () => {
           {
             text: "Monitor social media sentiment",
             impact: "low" as const,
+            nextStepId: currentStepId,
             consequence: "Gained better understanding of public perception."
           },
           {
             text: "Engage with key influencers",
             impact: "medium" as const,
+            nextStepId: currentStepId,
             consequence: "Some influencers are willing to hear your side."
           }
         ]
@@ -161,11 +163,18 @@ const Exercise = () => {
           {
             text: "Provide official statement",
             impact: "high" as const,
-            consequence: "Statement included in the coverage, showing proactive response."
+            nextStepId: currentStepId,
+            consequence: "Statement included in the coverage, showing proactive response.",
+            requiresFollowUp: {
+              question: "Draft your statement for the media outlet:",
+              type: "text",
+              validation: "length:200"
+            }
           },
           {
             text: "Request delay for fact-checking",
             impact: "medium" as const,
+            nextStepId: currentStepId,
             consequence: "Outlet agrees to verify facts but story will still run."
           }
         ]
@@ -177,12 +186,24 @@ const Exercise = () => {
           {
             text: "Hold emergency briefing",
             impact: "high" as const,
-            consequence: "Stakeholders appreciate direct communication but expect concrete actions."
+            nextStepId: currentStepId,
+            consequence: "Stakeholders appreciate direct communication but expect concrete actions.",
+            requiresFollowUp: {
+              question: "Outline the key points for your emergency briefing:",
+              type: "text",
+              validation: "length:200"
+            }
           },
           {
             text: "Send detailed written update",
             impact: "medium" as const,
-            consequence: "Update sent but some stakeholders want more direct engagement."
+            nextStepId: currentStepId,
+            consequence: "Update sent but some stakeholders want more direct engagement.",
+            requiresFollowUp: {
+              question: "Draft your detailed update message:",
+              type: "text",
+              validation: "length:200"
+            }
           }
         ]
       }
@@ -198,7 +219,8 @@ const Exercise = () => {
     }]);
 
     if (currentStep) {
-      currentStep.options = [...currentStep.options, ...event.options];
+      const newOptions = [...currentStep.options, ...event.options];
+      currentStep.options = newOptions;
     }
   };
 

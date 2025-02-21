@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,8 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
   const [textMode, setTextMode] = useState(false);
   const [textResponse, setTextResponse] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState("This is Sarah Chen from Global News. We've received reports about the ongoing situation. Can you provide an official statement?");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (!textMode) {
@@ -64,7 +66,6 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
 
-      // Play the audio
       const audio = new Audio(url);
       audio.play();
       
@@ -79,6 +80,53 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        // Here you could send the audio to a speech-to-text service
+        console.log('Recording stopped, audio URL:', audioUrl);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast({
+        title: "Recording Failed",
+        description: "Unable to access microphone. Switching to text mode.",
+        variant: "destructive"
+      });
+      setTextMode(true);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (isRecording) {
+      stopRecording();
+    }
+    onClose();
   };
 
   const predefinedResponses = [
@@ -134,7 +182,7 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
             variant="outline"
             size="icon"
             className="h-12 w-12 rounded-full bg-red-500 hover:bg-red-600"
-            onClick={onClose}
+            onClick={handleClose}
           >
             <PhoneOff className="h-6 w-6 text-white" />
           </Button>
@@ -144,7 +192,13 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
               variant="outline"
               size="icon"
               className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600"
-              onClick={() => setIsRecording(!isRecording)}
+              onClick={() => {
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  startRecording();
+                }
+              }}
             >
               {isRecording ? (
                 <Phone className="h-6 w-6 text-white" />

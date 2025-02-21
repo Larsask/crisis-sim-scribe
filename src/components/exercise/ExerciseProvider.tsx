@@ -8,6 +8,7 @@ import { CrisisEvent, StakeholderMessage, DecisionOption } from '@/types/crisis'
 import { TimeBasedEvent, AIResponse, FollowUpMessage, ExerciseConfig } from '@/types/crisis-enhanced';
 import { scenarios } from '@/data/scenarios';
 import { useNavigate } from 'react-router-dom';
+import { crisisMemoryManager } from '@/utils/crisis-memory';
 
 export const ExerciseProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -248,6 +249,10 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       content: text
     });
 
+    messages.forEach(message => {
+      crisisMemoryManager.addInteraction(message.sender, 'decision', text);
+    });
+
     const aiResponse = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: responseType === 'inappropriate' ? 'high' : 'medium',
@@ -416,6 +421,85 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     setIsTimeSkipping(false);
   };
 
+  const handleStakeholderResponse = (messageId: string, response: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
+
+    crisisMemoryManager.addInteraction(message.sender, messageId, response);
+    
+    const crisisState = crisisMemoryManager.getCrisisState();
+    const newEvents: CrisisEvent[] = [
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'decision',
+        content: response,
+        timestamp: Date.now(),
+        status: crisisState.severity === 'high' ? 'escalated' : 'active',
+        severity: crisisState.severity
+      }
+    ];
+
+    if (crisisMemoryManager.shouldEscalate(newEvents[0])) {
+      newEvents.push({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'consequence',
+        content: `Situation has escalated due to recent decisions. Public trust: ${crisisState.publicTrust}%, Media attention: ${crisisState.mediaAttention}%`,
+        timestamp: Date.now() + 1000,
+        status: 'escalated',
+        severity: 'high'
+      });
+    }
+
+    setEvents(prev => [...prev, ...newEvents]);
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+
+    const npcStatus = crisisMemoryManager.getNPCStatus(message.sender);
+    if (npcStatus && npcStatus.relationshipStatus === 'negative') {
+      const followUp: StakeholderMessage = {
+        id: Math.random().toString(36).substr(2, 9),
+        sender: message.sender,
+        content: crisisMemoryManager.generateResponse(
+          message.sender,
+          "Your recent responses have been concerning. We need to address this situation immediately."
+        ),
+        timestamp: Date.now() + 5000,
+        urgency: 'critical',
+        type: 'email',
+        status: 'unread',
+        responseDeadline: Date.now() + 300000
+      };
+      setTimeout(() => setMessages(prev => [...prev, followUp]), 5000);
+    }
+  };
+
+  const handleJournalistResponse = (response: string) => {
+    crisisMemoryManager.addInteraction('Press', 'journalist-call', response);
+    handleDecision(response, true);
+    setShowJournalistCall(false);
+  };
+
+  const handleFollowUpResponse = (response: string) => {
+    if (followUpMessage) {
+      crisisMemoryManager.addInteraction('System', 'follow-up', response);
+    }
+    handleDecision(response, true);
+    setFollowUpMessage(null);
+  };
+
+  const generateStakeholderReaction = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): StakeholderMessage => {
+    const stakeholderReaction: StakeholderMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      sender: "Crisis Management Team",
+      content: "Your recent decisions are causing significant concern. We need to reassess our approach immediately.",
+      timestamp: Date.now(),
+      urgency: 'critical',
+      responseDeadline: Date.now() + 300000,
+      type: 'email',
+      status: 'unread'
+    };
+    return stakeholderReaction;
+  };
+
   useEffect(() => {
     if (!category || !scenarioId || !complexity || !duration) {
       navigate('/scenario-setup');
@@ -505,45 +589,6 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       case 'high':
         return 'critical';
     }
-  };
-
-  const handleStakeholderResponse = (messageId: string, response: string) => {
-    handleDecision(response, true);
-    setMessages(prev => prev.filter(m => m.id !== messageId));
-  };
-
-  const handleMessageDismiss = (messageId: string) => {
-    setMessages(prev => prev.filter(m => m.id !== messageId));
-    setEvents(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'system',
-      content: "Stakeholder message ignored - this may have consequences.",
-      timestamp: Date.now(),
-      status: 'escalated'
-    }]);
-  };
-
-  const handleJournalistResponse = (response: string) => {
-    handleDecision(response, true);
-  };
-
-  const handleFollowUpResponse = (response: string) => {
-    handleDecision(response, true);
-    setFollowUpMessage(null);
-  };
-
-  const generateStakeholderReaction = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): StakeholderMessage => {
-    const stakeholderReaction: StakeholderMessage = {
-      id: Math.random().toString(36).substr(2, 9),
-      sender: "Crisis Management Team",
-      content: "Your recent decisions are causing significant concern. We need to reassess our approach immediately.",
-      timestamp: Date.now(),
-      urgency: 'critical',
-      responseDeadline: Date.now() + 300000,
-      type: 'email',
-      status: 'unread'
-    };
-    return stakeholderReaction;
   };
 
   const value = {

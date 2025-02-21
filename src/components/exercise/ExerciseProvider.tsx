@@ -97,6 +97,11 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
+  const handleFollowUpResponse = (response: string) => {
+    handleDecision(response, true);
+    setFollowUpMessage(null);
+  };
+
   const handleTimeSkip = async () => {
     setIsTimeSkipping(true);
     await fastForward();
@@ -160,7 +165,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     showJournalistCall,
     onDecision: handleDecision,
     onTimeSkip: handleTimeSkip,
-    onFollowUpResponse: handleDecision,
+    onFollowUpResponse: handleFollowUpResponse,
     onStakeholderResponse: handleStakeholderResponse,
     onMessageDismiss: removeMessage,
     onJournalistResponse: handleJournalistResponse,

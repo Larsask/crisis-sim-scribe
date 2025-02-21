@@ -1,4 +1,3 @@
-
 export interface CrisisEvent {
   id: string;
   type: 'event' | 'decision' | 'consequence' | 'system';
@@ -25,12 +24,15 @@ export interface DecisionOption {
   text: string;
   impact: 'low' | 'medium' | 'high';
   consequence: string;
+  requiresFollowUp?: {
+    question: string;
+    type: 'text' | 'phone' | 'email' | 'time';
+    validation?: string;
+  };
 }
 
 export interface ScenarioBrief {
   title: string;
   description: string;
-  stakeholders: string[];
-  objectives: string[];
   initialSituation: string;
 }

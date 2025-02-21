@@ -20,6 +20,7 @@ const Exercise = () => {
   const [showJournalistCall, setShowJournalistCall] = useState(false);
   const [isTimeSkipping, setIsTimeSkipping] = useState(false);
   const [availableOptions, setAvailableOptions] = useState<DecisionOption[]>([]);
+  const [inappropriateResponses, setInappropriateResponses] = useState<string[]>([]);
   
   const { 
     category,
@@ -47,15 +48,186 @@ const Exercise = () => {
   const scenarioBrief: ScenarioBrief = currentScenario ? {
     title: currentScenario.inbrief.title,
     description: currentScenario.inbrief.summary,
-    stakeholders: currentScenario.inbrief.stakeholders,
-    objectives: currentScenario.inbrief.objectives,
     initialSituation: currentScenario.inbrief.initialSituation
   } : {
     title: "Scenario Not Found",
     description: "Error loading scenario",
-    stakeholders: [],
-    objectives: [],
     initialSituation: "Please select a valid scenario"
+  };
+
+  const evaluateResponse = (text: string): 'appropriate' | 'inappropriate' | 'neutral' => {
+    const inappropriateKeywords = ['cat', 'party', 'ignore', 'hide', 'lie', 'delay', 'pizza'];
+    const appropriateKeywords = ['investigate', 'secure', 'protect', 'inform', 'assess', 'mitigate'];
+    
+    const hasInappropriate = inappropriateKeywords.some(keyword => text.toLowerCase().includes(keyword));
+    const hasAppropriate = appropriateKeywords.some(keyword => text.toLowerCase().includes(keyword));
+    
+    if (hasInappropriate) return 'inappropriate';
+    if (hasAppropriate) return 'appropriate';
+    return 'neutral';
+  };
+
+  const generateConsequence = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): string => {
+    if (responseType === 'inappropriate') {
+      return `Your unorthodox approach has raised serious concerns among stakeholders. ${
+        inappropriateResponses.length > 0 
+          ? "This pattern of inappropriate responses is damaging your organization's credibility."
+          : "This response may have serious consequences."
+      }`;
+    }
+    
+    if (responseType === 'appropriate') {
+      return "Your professional approach has been noted by stakeholders. However, the situation continues to evolve.";
+    }
+    
+    return "Your response has been acknowledged, but stakeholders await more decisive action.";
+  };
+
+  const handleDecision = (text: string, isCustom: boolean) => {
+    const responseType = evaluateResponse(text);
+    
+    const newEvent: CrisisEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'decision',
+      content: text,
+      timestamp: Date.now(),
+      status: 'active',
+      severity: responseType === 'inappropriate' ? 'high' : 'medium'
+    };
+
+    setEvents(prev => [...prev, newEvent]);
+
+    if (responseType === 'inappropriate') {
+      setInappropriateResponses(prev => [...prev, text]);
+    }
+
+    const consequence: CrisisEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'consequence',
+      content: generateConsequence(text, responseType),
+      timestamp: Date.now() + 1000,
+      parentId: newEvent.id,
+      status: responseType === 'inappropriate' ? 'escalated' : 'active',
+      severity: responseType === 'inappropriate' ? 'high' : 'medium'
+    };
+
+    setEvents(prev => [...prev, consequence]);
+
+    generateNewOptions(text, responseType);
+
+    if (responseType === 'inappropriate') {
+      const stakeholderReaction: StakeholderMessage = {
+        id: Math.random().toString(36).substr(2, 9),
+        sender: "Crisis Management Team",
+        content: "Your recent decisions are causing significant concern. We need to reassess our approach immediately.",
+        timestamp: Date.now(),
+        urgency: 'critical',
+        responseDeadline: Date.now() + 300000 // 5 minutes
+      };
+      setMessages(prev => [...prev, stakeholderReaction]);
+    }
+
+    toast({
+      title: responseType === 'inappropriate' ? "Warning" : "Decision Recorded",
+      description: responseType === 'inappropriate' 
+        ? "Your response may have serious consequences."
+        : "Your response has been recorded and will affect how the situation develops.",
+      variant: responseType === 'inappropriate' ? "destructive" : "default"
+    });
+  };
+
+  const generateNewOptions = (lastDecision: string, responseType: 'appropriate' | 'inappropriate' | 'neutral') => {
+    let newOptions: DecisionOption[] = [];
+    
+    if (responseType === 'inappropriate') {
+      newOptions = [
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          text: "Issue formal apology for previous response",
+          impact: 'high',
+          consequence: "Attempts to restore credibility",
+          requiresFollowUp: {
+            question: "Draft your apology statement:",
+            type: 'text',
+            validation: "length:200"
+          }
+        },
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          text: "Call emergency stakeholder meeting",
+          impact: 'high',
+          consequence: "Addresses growing concerns",
+          requiresFollowUp: {
+            question: "What will you address in the meeting?",
+            type: 'text',
+            validation: "length:150"
+          }
+        }
+      ];
+    } else {
+      newOptions = [
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          text: "Develop comprehensive response plan",
+          impact: 'high',
+          consequence: "Strategic approach but requires time",
+          requiresFollowUp: {
+            question: "Outline key elements of your plan:",
+            type: 'text',
+            validation: "length:200"
+          }
+        },
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          text: "Engage external consultants",
+          impact: 'medium',
+          consequence: "Expert support but increases costs",
+          requiresFollowUp: {
+            question: "Specify the expertise needed:",
+            type: 'text',
+            validation: "length:150"
+          }
+        }
+      ];
+    }
+    
+    setAvailableOptions(newOptions);
+  };
+
+  const handleTimeSkip = async () => {
+    setIsTimeSkipping(true);
+    await fastForward();
+    
+    const escalation = inappropriateResponses.length > 0
+      ? "Previous inappropriate responses have damaged our reputation. Media scrutiny intensifies."
+      : "Situation continues to develop. Stakeholders await our next move.";
+
+    const newEvents: CrisisEvent[] = [
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'system',
+        content: escalation,
+        timestamp: Date.now(),
+        status: inappropriateResponses.length > 0 ? 'escalated' : 'active',
+        severity: inappropriateResponses.length > 0 ? 'high' : 'medium'
+      }
+    ];
+    
+    setEvents(prev => [...prev, ...newEvents]);
+    
+    if (inappropriateResponses.length === 0) {
+      const newMessage: StakeholderMessage = {
+        id: Math.random().toString(36).substr(2, 9),
+        sender: "Strategic Planning",
+        content: "We need to formulate our next steps carefully. What direction should we take?",
+        timestamp: Date.now(),
+        urgency: 'urgent',
+        responseDeadline: Date.now() + 600000 // 10 minutes
+      };
+      setMessages(prev => [...prev, newMessage]);
+    }
+    
+    setIsTimeSkipping(false);
   };
 
   useEffect(() => {
@@ -98,99 +270,6 @@ const Exercise = () => {
       }
     }
   }, [isExerciseActive, startExercise, duration, updateTimeRemaining, currentScenario]);
-
-  const handleDecision = (text: string, isCustom: boolean) => {
-    const newEvent: CrisisEvent = {
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'decision',
-      content: text,
-      timestamp: Date.now(),
-      status: 'active'
-    };
-
-    setEvents(prev => [...prev, newEvent]);
-
-    const consequence: CrisisEvent = {
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'consequence',
-      content: isCustom ? 
-        `Your response leads to increased media scrutiny and stakeholder concern.` :
-        `Standard protocol followed, stakeholders notified according to procedure.`,
-      timestamp: Date.now() + 1000,
-      parentId: newEvent.id,
-      status: 'active'
-    };
-
-    setEvents(prev => [...prev, consequence]);
-
-    generateNewOptions(text);
-
-    toast({
-      title: "Decision Made",
-      description: "Your response has been recorded and will affect how the situation develops.",
-    });
-  };
-
-  const generateNewOptions = (lastDecision: string) => {
-    const newOptions: DecisionOption[] = [
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        text: "Engage external cybersecurity firm",
-        impact: 'high',
-        consequence: "Professional assessment but increased costs"
-      },
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        text: "Implement immediate security patches",
-        impact: 'medium',
-        consequence: "Quick fix but may not address root cause"
-      },
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        text: "Form crisis management task force",
-        impact: 'high',
-        consequence: "Coordinated response but takes time to organize"
-      }
-    ];
-    
-    setAvailableOptions(newOptions);
-  };
-
-  const handleTimeSkip = async () => {
-    setIsTimeSkipping(true);
-    await fastForward();
-    
-    const newEvents: CrisisEvent[] = [
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'system',
-        content: "Media coverage intensifies as news of the breach spreads.",
-        timestamp: Date.now(),
-        status: 'active'
-      },
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'event',
-        content: "Customer support reports increasing call volume about potential data exposure.",
-        timestamp: Date.now() + 1000,
-        status: 'active'
-      }
-    ];
-    
-    setEvents(prev => [...prev, ...newEvents]);
-    
-    const newMessage: StakeholderMessage = {
-      id: Math.random().toString(36).substr(2, 9),
-      sender: "Legal Department",
-      content: "Regulatory bodies need to be notified within the next hour. Please provide direction on our disclosure strategy.",
-      timestamp: Date.now(),
-      urgency: 'urgent',
-      responseDeadline: Date.now() + 3600000 // 1 hour
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
-    setIsTimeSkipping(false);
-  };
 
   return (
     <div className="min-h-screen bg-background p-6">

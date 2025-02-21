@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ExerciseQuestionnaire } from '@/components/exercise/ExerciseQuestionnaire';
 import { ExerciseSummary } from '@/components/exercise/ExerciseSummary';
 import { ScenarioOption } from '@/types/scenario';
+import { ArrowLeft } from 'lucide-react';
 
 const Exercise = () => {
   const navigate = useNavigate();
@@ -54,6 +56,7 @@ const Exercise = () => {
   }>>([]);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [lastEventTime, setLastEventTime] = useState(Date.now());
   const [questionnaireResponses, setQuestionnaireResponses] = useState<{
     situationHandling: string;
     lessonsLearned: string;
@@ -84,9 +87,7 @@ const Exercise = () => {
       navigate('/scenario-setup');
       return;
     }
-
-    console.log('Current Scenario:', currentScenario);
-  }, [category, scenarioId, complexity, duration, navigate, currentScenario]);
+  }, [category, scenarioId, complexity, duration, navigate]);
 
   useEffect(() => {
     if (!isExerciseActive) {
@@ -110,32 +111,40 @@ const Exercise = () => {
     return () => clearInterval(timer);
   }, [isExerciseActive, timeRemaining, updateTimeRemaining]);
 
-  useEffect(() => {
-    if (currentStep?.isJournalistCall && !showJournalist) {
-      const delay = Math.random() * 10000 + 5000;
-      const timer = setTimeout(() => setShowJournalist(true), delay);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, showJournalist]);
-
-  useEffect(() => {
-    if (timeRemaining <= 0) {
-      handleEndExercise();
-    }
-  }, [timeRemaining]);
-
+  // Enhanced journalist call logic
   useEffect(() => {
     if (!showInbrief && !showQuestionnaire && !showSummary) {
-      const eventInterval = setInterval(() => {
-        const shouldTriggerEvent = Math.random() < 0.3;
+      const checkJournalist = () => {
+        const timeSinceLastEvent = Date.now() - lastEventTime;
+        const shouldCall = Math.random() < 0.3 && timeSinceLastEvent > 30000;
+        if (shouldCall && !showJournalist) {
+          setShowJournalist(true);
+          setLastEventTime(Date.now());
+        }
+      };
+
+      const journalistInterval = setInterval(checkJournalist, 15000);
+      return () => clearInterval(journalistInterval);
+    }
+  }, [showInbrief, showQuestionnaire, showSummary, lastEventTime, showJournalist]);
+
+  // Enhanced dynamic events generation
+  useEffect(() => {
+    if (!showInbrief && !showQuestionnaire && !showSummary) {
+      const generateEvents = () => {
+        const timeSinceLastEvent = Date.now() - lastEventTime;
+        const shouldTriggerEvent = Math.random() < 0.4 && timeSinceLastEvent > 20000;
+        
         if (shouldTriggerEvent) {
           generateDynamicEvent();
+          setLastEventTime(Date.now());
         }
-      }, 30000);
+      };
 
+      const eventInterval = setInterval(generateEvents, 10000);
       return () => clearInterval(eventInterval);
     }
-  }, [showInbrief, showQuestionnaire, showSummary, currentStepId]);
+  }, [showInbrief, showQuestionnaire, showSummary, lastEventTime]);
 
   const generateDynamicEvent = () => {
     const possibleEvents: Array<{
@@ -229,6 +238,12 @@ const Exercise = () => {
     }
   };
 
+  useEffect(() => {
+    if (timeRemaining <= 0) {
+      handleEndExercise();
+    }
+  }, [timeRemaining]);
+
   const handleEndExercise = () => {
     setShowQuestionnaire(true);
   };
@@ -251,6 +266,7 @@ const Exercise = () => {
 
   const handleDecision = (text: string, impact: 'low' | 'medium' | 'high', nextStepId: string, consequence: string) => {
     const option = currentStep?.options.find(opt => opt.text === text);
+    setLastEventTime(Date.now());
     
     if (option?.requiresFollowUp) {
       setShowFollowUp({
@@ -330,6 +346,7 @@ const Exercise = () => {
       "Your response has been recorded and may appear in future media coverage."
     );
     setShowJournalist(false);
+    setLastEventTime(Date.now());
   };
 
   const handleStatementSubmit = (statement: string) => {
@@ -340,6 +357,7 @@ const Exercise = () => {
       "high",
       "Your statement is now your official position and will be referenced by media."
     );
+    setLastEventTime(Date.now());
   };
 
   if (!currentScenario) {
@@ -349,18 +367,38 @@ const Exercise = () => {
 
   if (showSummary && questionnaireResponses) {
     return (
-      <ExerciseSummary
-        scenarioTitle={currentScenario.inbrief.title}
-        duration={duration || ''}
-        decisions={decisions}
-        questionnaire={questionnaireResponses}
-      />
+      <div className="min-h-screen bg-background p-6">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/scenario-setup')}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Setup
+        </Button>
+        <div className="max-w-4xl mx-auto">
+          <ExerciseSummary
+            scenarioTitle={currentScenario.inbrief.title}
+            duration={duration || ''}
+            decisions={decisions}
+            questionnaire={questionnaireResponses}
+          />
+        </div>
+      </div>
     );
   }
 
   if (showQuestionnaire) {
     return (
       <div className="min-h-screen bg-background p-6">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowQuestionnaire(false)}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Exercise
+        </Button>
         <div className="max-w-4xl mx-auto">
           <ExerciseQuestionnaire onComplete={handleQuestionnaireComplete} />
         </div>
@@ -371,6 +409,14 @@ const Exercise = () => {
   if (showInbrief) {
     return (
       <div className="min-h-screen bg-background p-6">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/scenario-setup')}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Setup
+        </Button>
         <div className="max-w-4xl mx-auto">
           <ScenarioInbrief
             inbrief={currentScenario.inbrief}
@@ -425,7 +471,9 @@ const Exercise = () => {
                         message.type === 'system' ? 'bg-muted' :
                         message.type === 'decision' ? 'bg-blue-50 dark:bg-blue-900/20' :
                         message.type === 'followup' ? 'bg-green-50 dark:bg-green-900/20' :
-                        'bg-yellow-50 dark:bg-yellow-900/20'
+                        'bg
+
+-yellow-50 dark:bg-yellow-900/20'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">

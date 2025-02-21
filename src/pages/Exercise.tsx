@@ -21,6 +21,11 @@ const Exercise = () => {
   const [isTimeSkipping, setIsTimeSkipping] = useState(false);
   const [availableOptions, setAvailableOptions] = useState<DecisionOption[]>([]);
   const [inappropriateResponses, setInappropriateResponses] = useState<string[]>([]);
+  const [lastDecisionContext, setLastDecisionContext] = useState<{
+    type: string;
+    timestamp: number;
+    content: string;
+  } | null>(null);
   
   const { 
     category,
@@ -67,25 +72,59 @@ const Exercise = () => {
     return 'neutral';
   };
 
-  const generateConsequence = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): string => {
+  const generateContextAwareResponse = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): string => {
+    const timeSinceLastDecision = lastDecisionContext ? Date.now() - lastDecisionContext.timestamp : null;
+    const isRepetitiveAction = lastDecisionContext?.content.toLowerCase().includes(text.toLowerCase());
+    
     if (responseType === 'inappropriate') {
-      return `Your unorthodox approach has raised serious concerns among stakeholders. ${
-        inappropriateResponses.length > 0 
-          ? "This pattern of inappropriate responses is damaging your organization's credibility."
-          : "This response may have serious consequences."
-      }`;
+      if (inappropriateResponses.length > 2) {
+        return "Your continued pattern of questionable decisions has severely damaged stakeholder trust. Board members are now expressing serious concerns about crisis management leadership.";
+      }
+      return `Your approach has raised serious concerns. ${isRepetitiveAction ? "Repeating ineffective strategies is creating additional risks." : "This decision may have long-term consequences for stakeholder trust."}`;
     }
     
     if (responseType === 'appropriate') {
-      return "Your professional approach has been noted by stakeholders. However, the situation continues to evolve.";
+      if (timeSinceLastDecision && timeSinceLastDecision < 300000) { // 5 minutes
+        return "Quick, decisive action noted. However, stakeholders are concerned about the rapid pace of decisions without proper consultation.";
+      }
+      return "Your professional approach has been acknowledged. Stakeholders are cautiously optimistic but expect concrete follow-up actions.";
     }
     
-    return "Your response has been acknowledged, but stakeholders await more decisive action.";
+    return "While your response has been noted, stakeholders expect more specific actions to address their concerns.";
+  };
+
+  const generateFollowUpEvent = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): CrisisEvent => {
+    const baseEvent: CrisisEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'event',
+      timestamp: Date.now() + 2000,
+      status: 'active',
+      severity: 'medium'
+    };
+
+    if (text.toLowerCase().includes('investigation')) {
+      baseEvent.content = "Internal teams begin gathering documentation. Legal department advises on compliance requirements.";
+      baseEvent.severity = 'high';
+    } else if (text.toLowerCase().includes('statement')) {
+      baseEvent.content = "Communications team drafts initial statement. PR advisors suggest media strategy adjustment.";
+    } else if (text.toLowerCase().includes('stakeholder')) {
+      baseEvent.content = "Key stakeholders acknowledge your outreach. Some request additional details.";
+    } else {
+      baseEvent.content = "Teams begin implementing your decision. Initial feedback suggests mixed reactions.";
+    }
+
+    return baseEvent;
   };
 
   const handleDecision = (text: string, isCustom: boolean) => {
     const responseType = evaluateResponse(text);
     
+    setLastDecisionContext({
+      type: responseType,
+      timestamp: Date.now(),
+      content: text
+    });
+
     const newEvent: CrisisEvent = {
       id: Math.random().toString(36).substr(2, 9),
       type: 'decision',
@@ -104,14 +143,16 @@ const Exercise = () => {
     const consequence: CrisisEvent = {
       id: Math.random().toString(36).substr(2, 9),
       type: 'consequence',
-      content: generateConsequence(text, responseType),
+      content: generateContextAwareResponse(text, responseType),
       timestamp: Date.now() + 1000,
       parentId: newEvent.id,
       status: responseType === 'inappropriate' ? 'escalated' : 'active',
       severity: responseType === 'inappropriate' ? 'high' : 'medium'
     };
 
-    setEvents(prev => [...prev, consequence]);
+    const followUpEvent = generateFollowUpEvent(text, responseType);
+    
+    setEvents(prev => [...prev, consequence, followUpEvent]);
 
     generateNewOptions(text, responseType);
 
@@ -127,6 +168,10 @@ const Exercise = () => {
         status: 'unread'
       };
       setMessages(prev => [...prev, stakeholderReaction]);
+    }
+
+    if (Math.random() > 0.7) {
+      setShowJournalistCall(true);
     }
 
     toast({
@@ -167,30 +212,57 @@ const Exercise = () => {
         }
       ];
     } else {
-      newOptions = [
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          text: "Develop comprehensive response plan",
-          impact: 'high',
-          consequence: "Strategic approach but requires time",
-          requiresFollowUp: {
-            question: "Outline key elements of your plan:",
-            type: 'text',
-            validation: "length:200"
+      if (lastDecision.toLowerCase().includes('investigation')) {
+        newOptions = [
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            text: "Share preliminary findings with stakeholders",
+            impact: 'high',
+            consequence: "Demonstrates transparency but may reveal vulnerabilities",
+            requiresFollowUp: {
+              question: "What key findings will you share?",
+              type: 'text',
+              validation: "length:200"
+            }
+          },
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            text: "Implement immediate corrective measures",
+            impact: 'high',
+            consequence: "Shows decisive action but may admit fault",
+            requiresFollowUp: {
+              question: "Outline the corrective measures:",
+              type: 'text',
+              validation: "length:150"
+            }
           }
-        },
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          text: "Engage external consultants",
-          impact: 'medium',
-          consequence: "Expert support but increases costs",
-          requiresFollowUp: {
-            question: "Specify the expertise needed:",
-            type: 'text',
-            validation: "length:150"
+        ];
+      } else {
+        newOptions = [
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            text: "Develop comprehensive response plan",
+            impact: 'high',
+            consequence: "Strategic approach but requires time",
+            requiresFollowUp: {
+              question: "Outline key elements of your plan:",
+              type: 'text',
+              validation: "length:200"
+            }
+          },
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            text: "Engage external consultants",
+            impact: 'medium',
+            consequence: "Expert support but increases costs",
+            requiresFollowUp: {
+              question: "Specify the expertise needed:",
+              type: 'text',
+              validation: "length:150"
+            }
           }
-        }
-      ];
+        ];
+      }
     }
     
     setAvailableOptions(newOptions);

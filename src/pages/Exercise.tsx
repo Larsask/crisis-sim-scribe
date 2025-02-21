@@ -137,7 +137,11 @@ const Exercise = () => {
   }, [showInbrief, showQuestionnaire, showSummary, currentStepId]);
 
   const generateDynamicEvent = () => {
-    const possibleEvents = [
+    const possibleEvents: Array<{
+      type: string;
+      description: string;
+      options: ScenarioOption[];
+    }> = [
       {
         type: 'social_media',
         description: 'A trending hashtag related to the situation is gaining traction.',
@@ -167,7 +171,7 @@ const Exercise = () => {
             consequence: "Statement included in the coverage, showing proactive response.",
             requiresFollowUp: {
               question: "Draft your statement for the media outlet:",
-              type: "text",
+              type: "text" as const,
               validation: "length:200"
             }
           },
@@ -190,7 +194,7 @@ const Exercise = () => {
             consequence: "Stakeholders appreciate direct communication but expect concrete actions.",
             requiresFollowUp: {
               question: "Outline the key points for your emergency briefing:",
-              type: "text",
+              type: "text" as const,
               validation: "length:200"
             }
           },
@@ -201,7 +205,7 @@ const Exercise = () => {
             consequence: "Update sent but some stakeholders want more direct engagement.",
             requiresFollowUp: {
               question: "Draft your detailed update message:",
-              type: "text",
+              type: "text" as const,
               validation: "length:200"
             }
           }

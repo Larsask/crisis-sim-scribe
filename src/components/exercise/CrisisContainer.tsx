@@ -7,7 +7,8 @@ import { JournalistCall } from './JournalistCall';
 import { FollowUpBox } from './FollowUpBox';
 import { ExerciseConfigPanel } from './ExerciseConfig';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from 'lucide-react';
+import { Card } from "@/components/ui/card";
+import { ArrowLeft, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const CrisisContainer = () => {
@@ -33,34 +34,47 @@ export const CrisisContainer = () => {
     setShowJournalistCall
   } = useExerciseContext();
 
-  return (
-    <div className="min-h-screen bg-background p-6">
-      <Button 
-        variant="outline" 
-        onClick={() => navigate('/scenario-setup')}
-        className="mb-4"
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Setup
-      </Button>
+  const formatTimeRemaining = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <CrisisResponseFlow 
-              events={events}
-              timeRemaining={timeRemaining}
-            />
-            {followUpMessage && (
-              <FollowUpBox
-                message={followUpMessage}
-                onResponse={onFollowUpResponse}
-                onDismiss={() => onFollowUpResponse("")}
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="fixed top-0 left-0 right-0 bg-background/95 backdrop-blur z-50 border-b">
+        <div className="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/scenario-setup')}
+            size="sm"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Setup
+          </Button>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            <span className="font-mono text-lg">
+              {formatTimeRemaining(timeRemaining)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column - Crisis Timeline */}
+          <div className="lg:col-span-7 space-y-6">
+            <Card className="p-4">
+              <CrisisResponseFlow 
+                events={events}
+                timeRemaining={timeRemaining}
               />
-            )}
+            </Card>
           </div>
 
-          <div className="space-y-6">
+          {/* Right Column - Current Situation & Actions */}
+          <div className="lg:col-span-5 space-y-6">
             <CurrentSituation
               currentStepId={currentStepId}
               onDecision={onDecision}
@@ -69,27 +83,44 @@ export const CrisisContainer = () => {
               scenarioBrief={scenarioBrief}
               availableOptions={availableOptions}
             />
+
+            {followUpMessage && (
+              <FollowUpBox
+                message={followUpMessage}
+                onResponse={onFollowUpResponse}
+                onDismiss={() => onFollowUpResponse("")}
+              />
+            )}
           </div>
         </div>
+      </div>
 
+      {/* Messages Container - Fixed Position */}
+      <div className="fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] z-50">
         <StakeholderMessages
           messages={messages}
           onRespond={onStakeholderResponse}
           onDismiss={onMessageDismiss}
         />
-
-        {showJournalistCall && (
-          <JournalistCall
-            onClose={() => setShowJournalistCall(false)}
-            onResponse={onJournalistResponse}
-          />
-        )}
-
-        <ExerciseConfigPanel
-          config={config}
-          onConfigChange={setConfig}
-        />
       </div>
+
+      {/* Journalist Call - Centered Modal */}
+      {showJournalistCall && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="w-full max-w-lg mx-4">
+            <JournalistCall
+              onClose={() => setShowJournalistCall(false)}
+              onResponse={onJournalistResponse}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Config Panel - Always accessible */}
+      <ExerciseConfigPanel
+        config={config}
+        onConfigChange={setConfig}
+      />
     </div>
   );
 };

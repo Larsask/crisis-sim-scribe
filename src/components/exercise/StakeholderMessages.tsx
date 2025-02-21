@@ -158,15 +158,16 @@ export const StakeholderMessages = ({
   };
 
   return (
-    <div className="fixed bottom-4 right-4 space-y-4 max-w-sm z-50 max-h-[80vh] overflow-y-auto">
+    <div className="space-y-4 max-h-[60vh] overflow-y-auto rounded-lg">
       {messages.map((message) => (
         <Card 
           key={message.id} 
           className={`p-4 transition-all duration-300 ${
             unreadMessages.has(message.id) ? 'animate-in fade-in slide-in-from-right-5' : ''
           } ${
-            message.urgency === 'critical' ? 'border-red-500 bg-red-50/50' :
-            message.urgency === 'urgent' ? 'border-yellow-500 bg-yellow-50/50' : ''
+            message.urgency === 'critical' ? 'border-red-500 bg-white shadow-lg' :
+            message.urgency === 'urgent' ? 'border-yellow-500 bg-white shadow-md' :
+            'bg-white shadow'
           }`}
         >
           <div className="flex justify-between items-start mb-2">

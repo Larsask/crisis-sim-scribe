@@ -1,15 +1,9 @@
 
-import { Card } from "@/components/ui/card";
-import { AlertTriangle, CheckCircle, Info, UserCircle } from 'lucide-react';
-
-interface CrisisEvent {
-  id: string;
-  type: 'event' | 'decision' | 'consequence' | 'system';
-  content: string;
-  timestamp: number;
-  parentId?: string;
-  status: 'active' | 'resolved' | 'escalated';
-}
+import { useRef, useEffect } from 'react';
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertTriangle, CheckCircle, Clock, Info } from 'lucide-react';
+import { CrisisEvent } from '@/types/crisis';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CrisisResponseFlowProps {
   events: CrisisEvent[];
@@ -17,74 +11,89 @@ interface CrisisResponseFlowProps {
 }
 
 export const CrisisResponseFlow = ({ events, timeRemaining }: CrisisResponseFlowProps) => {
-  const getNodeIcon = (type: string, status: string) => {
-    if (status === 'resolved') return <CheckCircle className="h-5 w-5 text-green-500" />;
-    
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [events]);
+
+  const getEventIcon = (type: string, severity: string = 'medium') => {
+    const iconProps = {
+      className: `h-5 w-5 ${
+        severity === 'high' ? 'text-red-500' :
+        severity === 'medium' ? 'text-yellow-500' :
+        'text-blue-500'
+      }`
+    };
+
     switch (type) {
-      case 'event':
-        return <Info className="h-5 w-5 text-blue-500" />;
       case 'decision':
-        return <UserCircle className="h-5 w-5 text-purple-500" />;
+        return <CheckCircle {...iconProps} />;
       case 'consequence':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+        return <AlertTriangle {...iconProps} />;
+      case 'system':
+        return <Info {...iconProps} />;
       default:
-        return <Info className="h-5 w-5 text-gray-500" />;
+        return <Clock {...iconProps} />;
     }
   };
 
-  // Organize events into a hierarchical structure
-  const organizeEvents = (events: CrisisEvent[]) => {
-    const eventMap = new Map<string | undefined, CrisisEvent[]>();
-    
-    events.forEach(event => {
-      const parent = event.parentId || 'root';
-      if (!eventMap.has(parent)) {
-        eventMap.set(parent, []);
-      }
-      eventMap.get(parent)!.push(event);
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
-
-    return eventMap;
   };
-
-  const renderEventNode = (event: CrisisEvent, level: number = 0) => {
-    const organized = organizeEvents(events);
-    const children = organized.get(event.id) || [];
-
-    return (
-      <div key={event.id} className="relative">
-        <div className={`
-          ml-${level * 4} p-3 rounded-lg shadow-sm mb-2
-          ${event.status === 'resolved' ? 'bg-green-50 dark:bg-green-900/20' :
-            event.status === 'escalated' ? 'bg-red-50 dark:bg-red-900/20' :
-            event.type === 'system' ? 'bg-gray-50 dark:bg-gray-900/20' :
-            'bg-blue-50 dark:bg-blue-900/20'}
-          ${level > 0 ? 'border-l-2 border-gray-200 dark:border-gray-700' : ''}
-        `}>
-          <div className="flex items-center gap-2">
-            {getNodeIcon(event.type, event.status)}
-            <span className="text-sm">{event.content}</span>
-          </div>
-        </div>
-        
-        {children.length > 0 && (
-          <div className="ml-4 space-y-2">
-            {children.map(child => renderEventNode(child, level + 1))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const organizedEvents = organizeEvents(events);
-  const rootEvents = organizedEvents.get('root') || [];
 
   return (
-    <Card className="p-4 overflow-auto max-h-[600px]">
-      <h2 className="font-semibold text-lg mb-4">Crisis Response Flow</h2>
-      <div className="space-y-4">
-        {rootEvents.map(event => renderEventNode(event))}
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-semibold text-lg">Crisis Timeline</h2>
       </div>
-    </Card>
+
+      <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
+        <div className="space-y-4" ref={scrollRef}>
+          {events.map((event, index) => (
+            <Card
+              key={event.id}
+              className={`transition-all duration-300 ${
+                index === events.length - 1 ? 'animate-in fade-in slide-in-from-bottom-5' : ''
+              }`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    {getEventIcon(event.type, event.severity)}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex justify-between items-start">
+                      <p className={`text-sm font-medium ${
+                        event.severity === 'high' ? 'text-red-600' :
+                        event.severity === 'medium' ? 'text-yellow-600' :
+                        'text-blue-600'
+                      }`}>
+                        {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTime(event.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-sm">{event.content}</p>
+                    {event.status === 'escalated' && (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                        Situation Escalating
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
   );
 };

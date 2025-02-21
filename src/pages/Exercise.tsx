@@ -8,28 +8,9 @@ import { CurrentSituation } from '@/components/exercise/CurrentSituation';
 import { StakeholderMessages } from '@/components/exercise/StakeholderMessages';
 import { JournalistCall } from '@/components/exercise/JournalistCall';
 import { scenarios } from '@/data/scenarios';
-import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-
-interface CrisisEvent {
-  id: string;
-  type: 'event' | 'decision' | 'consequence' | 'system';
-  content: string;
-  timestamp: number;
-  parentId?: string;
-  status: 'active' | 'resolved' | 'escalated';
-}
-
-interface StakeholderMessage {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: number;
-  image?: string;
-  urgency: 'normal' | 'urgent' | 'critical';
-  responseDeadline?: number;
-}
+import { CrisisEvent, StakeholderMessage, DecisionOption, ScenarioBrief } from '@/types/crisis';
 
 const Exercise = () => {
   const navigate = useNavigate();
@@ -39,6 +20,7 @@ const Exercise = () => {
   const [messages, setMessages] = useState<StakeholderMessage[]>([]);
   const [showJournalistCall, setShowJournalistCall] = useState(false);
   const [isTimeSkipping, setIsTimeSkipping] = useState(false);
+  const [availableOptions, setAvailableOptions] = useState<DecisionOption[]>([]);
   
   const { 
     category,
@@ -50,11 +32,29 @@ const Exercise = () => {
     timeRemaining,
     updateTimeRemaining,
     addDecision,
-    decisions,
-    totalScore,
     fastForward,
-    currentTime
   } = useScenarioStore();
+
+  // Get scenario brief from the scenarios data
+  const scenarioBrief: ScenarioBrief = {
+    title: "Data Breach Crisis",
+    description: "A major data breach has been detected in your organization's systems. Customer data may have been compromised.",
+    stakeholders: [
+      "IT Security Team",
+      "Public Relations",
+      "Legal Department",
+      "Customer Support",
+      "Executive Leadership"
+    ],
+    objectives: [
+      "Contain the data breach",
+      "Notify affected customers",
+      "Manage public relations",
+      "Ensure legal compliance",
+      "Prevent future breaches"
+    ],
+    initialSituation: "Initial analysis suggests that customer payment information and personal data may have been exposed. The breach was detected 30 minutes ago, and stakeholders are demanding immediate action."
+  };
 
   useEffect(() => {
     if (!category || !scenarioId || !complexity || !duration) {
@@ -72,43 +72,58 @@ const Exercise = () => {
         '2hrs': 2 * 60 * 60 * 1000
       }[duration!];
       updateTimeRemaining(durationInMs);
+
+      // Initialize with first set of options
+      setAvailableOptions([
+        {
+          id: '1',
+          text: "Notify all affected customers immediately",
+          impact: 'high',
+          consequence: "Shows transparency but may cause panic"
+        },
+        {
+          id: '2',
+          text: "Conduct thorough investigation before any announcements",
+          impact: 'medium',
+          consequence: "Gains more information but delays response"
+        },
+        {
+          id: '3',
+          text: "Issue preliminary statement acknowledging potential breach",
+          impact: 'high',
+          consequence: "Balanced approach but may raise questions"
+        }
+      ]);
     }
   }, [isExerciseActive, startExercise, duration, updateTimeRemaining]);
 
-  useEffect(() => {
-    if (!isExerciseActive || timeRemaining <= 0) return;
-
-    const timer = setInterval(() => {
-      updateTimeRemaining(Math.max(0, timeRemaining - 1000));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isExerciseActive, timeRemaining, updateTimeRemaining]);
-
   const handleDecision = (text: string, isCustom: boolean) => {
-    const impact = isCustom ? 'medium' : 'high';
-    const consequence = `Response to the situation: ${text}`;
-    
-    addDecision(text, impact, consequence);
-    
-    setEvents(prev => [
-      ...prev,
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'decision',
-        content: text,
-        timestamp: Date.now(),
-        status: 'active'
-      },
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'consequence',
-        content: consequence,
-        timestamp: Date.now() + 1000,
-        parentId: currentStepId,
-        status: 'active'
-      }
-    ]);
+    const newEvent: CrisisEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'decision',
+      content: text,
+      timestamp: Date.now(),
+      status: 'active'
+    };
+
+    setEvents(prev => [...prev, newEvent]);
+
+    // Generate consequence based on decision
+    const consequence: CrisisEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'consequence',
+      content: isCustom ? 
+        `Your response leads to increased media scrutiny and stakeholder concern.` :
+        `Standard protocol followed, stakeholders notified according to procedure.`,
+      timestamp: Date.now() + 1000,
+      parentId: newEvent.id,
+      status: 'active'
+    };
+
+    setEvents(prev => [...prev, consequence]);
+
+    // Update available options based on decision
+    generateNewOptions(text);
 
     toast({
       title: "Decision Made",
@@ -116,46 +131,68 @@ const Exercise = () => {
     });
   };
 
-  const handleMessageResponse = (messageId: string, response: string) => {
-    setMessages(prev => prev.filter(m => m.id !== messageId));
-    handleDecision(response, true);
-  };
-
-  const handleMessageDismiss = (messageId: string) => {
-    setMessages(prev => prev.filter(m => m.id !== messageId));
-    // Add negative consequence for ignoring stakeholder
-    setEvents(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'system',
-      content: "Stakeholder message ignored - this may have consequences.",
-      timestamp: Date.now(),
-      status: 'escalated'
-    }]);
+  const generateNewOptions = (lastDecision: string) => {
+    // Generate new context-appropriate options based on the last decision
+    const newOptions: DecisionOption[] = [
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        text: "Engage external cybersecurity firm",
+        impact: 'high',
+        consequence: "Professional assessment but increased costs"
+      },
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        text: "Implement immediate security patches",
+        impact: 'medium',
+        consequence: "Quick fix but may not address root cause"
+      },
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        text: "Form crisis management task force",
+        impact: 'high',
+        consequence: "Coordinated response but takes time to organize"
+      }
+    ];
+    
+    setAvailableOptions(newOptions);
   };
 
   const handleTimeSkip = async () => {
     setIsTimeSkipping(true);
     await fastForward();
     
-    // Add dynamic events based on time skip
-    const newEvents = generateTimeSkipEvents();
-    setEvents(prev => [...prev, ...newEvents]);
-    
-    setIsTimeSkipping(false);
-  };
-
-  const generateTimeSkipEvents = () => {
-    // Generate dynamic events based on current situation
-    return [
+    // Generate new events based on time skip
+    const newEvents: CrisisEvent[] = [
       {
         id: Math.random().toString(36).substr(2, 9),
         type: 'system',
-        content: "Time passes... The situation continues to develop.",
+        content: "Media coverage intensifies as news of the breach spreads.",
         timestamp: Date.now(),
         status: 'active'
       },
-      // Add more dynamic events based on context
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'event',
+        content: "Customer support reports increasing call volume about potential data exposure.",
+        timestamp: Date.now() + 1000,
+        status: 'active'
+      }
     ];
+    
+    setEvents(prev => [...prev, ...newEvents]);
+    
+    // Add new stakeholder message
+    const newMessage: StakeholderMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      sender: "Legal Department",
+      content: "Regulatory bodies need to be notified within the next hour. Please provide direction on our disclosure strategy.",
+      timestamp: Date.now(),
+      urgency: 'urgent',
+      responseDeadline: Date.now() + 3600000 // 1 hour
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+    setIsTimeSkipping(false);
   };
 
   return (
@@ -171,7 +208,6 @@ const Exercise = () => {
 
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Panel - Crisis Response Flow */}
           <div className="space-y-6">
             <CrisisResponseFlow 
               events={events}
@@ -179,29 +215,41 @@ const Exercise = () => {
             />
           </div>
 
-          {/* Right Panel - Current Situation & Decisions */}
           <div className="space-y-6">
             <CurrentSituation
               currentStepId={currentStepId}
               onDecision={handleDecision}
               isTimeSkipping={isTimeSkipping}
               onTimeSkip={handleTimeSkip}
+              scenarioBrief={scenarioBrief}
+              availableOptions={availableOptions}
             />
           </div>
         </div>
 
-        {/* Floating Stakeholder Messages */}
         <StakeholderMessages
           messages={messages}
-          onRespond={handleMessageResponse}
-          onDismiss={handleMessageDismiss}
+          onRespond={(messageId, response) => {
+            handleDecision(response, true);
+            setMessages(prev => prev.filter(m => m.id !== messageId));
+          }}
+          onDismiss={(messageId) => {
+            setMessages(prev => prev.filter(m => m.id !== messageId));
+            // Add negative consequence for ignoring stakeholder
+            setEvents(prev => [...prev, {
+              id: Math.random().toString(36).substr(2, 9),
+              type: 'system',
+              content: "Stakeholder message ignored - this may have consequences.",
+              timestamp: Date.now(),
+              status: 'escalated'
+            }]);
+          }}
         />
 
-        {/* Journalist Call Modal */}
         {showJournalistCall && (
           <JournalistCall
             onClose={() => setShowJournalistCall(false)}
-            onResponse={handleDecision}
+            onResponse={(response) => handleDecision(response, true)}
           />
         )}
       </div>

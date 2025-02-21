@@ -1,7 +1,7 @@
 
 import { useRef, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle, CheckCircle, Clock, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Info, ChevronRight } from 'lucide-react';
 import { CrisisEvent } from '@/types/crisis';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -48,6 +48,18 @@ export const CrisisResponseFlow = ({ events, timeRemaining }: CrisisResponseFlow
     });
   };
 
+  // Group events by their parent event
+  const groupedEvents = events.reduce((acc, event) => {
+    if (event.type === 'decision' || event.parentEventId === undefined) {
+      // This is a main event
+      acc.push({
+        mainEvent: event,
+        subEvents: events.filter(e => e.parentEventId === event.id)
+      });
+    }
+    return acc;
+  }, [] as { mainEvent: CrisisEvent; subEvents: CrisisEvent[] }[]);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -56,41 +68,64 @@ export const CrisisResponseFlow = ({ events, timeRemaining }: CrisisResponseFlow
 
       <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
         <div className="space-y-4" ref={scrollRef}>
-          {events.map((event, index) => (
-            <Card
-              key={event.id}
-              className={`transition-all duration-300 ${
-                index === events.length - 1 ? 'animate-in fade-in slide-in-from-bottom-5' : ''
-              }`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1">
-                    {getEventIcon(event.type, event.severity)}
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between items-start">
-                      <p className={`text-sm font-medium ${
-                        event.severity === 'high' ? 'text-red-600' :
-                        event.severity === 'medium' ? 'text-yellow-600' :
-                        'text-blue-600'
-                      }`}>
-                        {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
-                      </p>
-                      <span className="text-xs text-muted-foreground">
-                        {formatTime(event.timestamp)}
-                      </span>
+          {groupedEvents.map(({ mainEvent, subEvents }) => (
+            <div key={mainEvent.id} className="space-y-2">
+              <Card className={`transition-all duration-300 ${
+                mainEvent === events[events.length - 1] ? 'animate-in fade-in slide-in-from-bottom-5' : ''
+              }`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1">
+                      {getEventIcon(mainEvent.type, mainEvent.severity)}
                     </div>
-                    <p className="text-sm">{event.content}</p>
-                    {event.status === 'escalated' && (
-                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
-                        Situation Escalating
+                    <div className="flex-1 space-y-1">
+                      <div className="flex justify-between items-start">
+                        <p className={`text-sm font-medium ${
+                          mainEvent.severity === 'high' ? 'text-red-600' :
+                          mainEvent.severity === 'medium' ? 'text-yellow-600' :
+                          'text-blue-600'
+                        }`}>
+                          {mainEvent.type.charAt(0).toUpperCase() + mainEvent.type.slice(1)}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(mainEvent.timestamp)}
+                        </span>
                       </div>
-                    )}
+                      <p className="text-sm">{mainEvent.content}</p>
+                      {mainEvent.status === 'escalated' && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+                          Situation Escalating
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {subEvents.map(subEvent => (
+                <Card 
+                  key={subEvent.id}
+                  className="ml-8 border-l-2 border-l-muted-foreground/20"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground mt-1" />
+                      <div className="flex-1 space-y-1">
+                        <div className="flex justify-between items-start">
+                          <p className="text-sm text-muted-foreground">
+                            {subEvent.type.charAt(0).toUpperCase() + subEvent.type.slice(1)}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(subEvent.timestamp)}
+                          </span>
+                        </div>
+                        <p className="text-sm">{subEvent.content}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           ))}
         </div>
       </ScrollArea>

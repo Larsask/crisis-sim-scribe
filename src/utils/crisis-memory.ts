@@ -212,6 +212,16 @@ class CrisisMemoryManager {
     return defaultResponse;
   }
 
+  getStakeholderHistory(stakeholder: string): Array<{ type: string; content: string }> {
+    const memory = this.stakeholderMemory.get(stakeholder);
+    if (!memory) return [];
+
+    return memory.pastInteractions.map(interaction => ({
+      type: interaction.type,
+      content: interaction.response
+    }));
+  }
+
   private getRecentEvents(): CrisisEvent[] {
     return [];
   }

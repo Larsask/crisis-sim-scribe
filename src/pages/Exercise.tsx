@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -111,7 +110,6 @@ const Exercise = () => {
     return () => clearInterval(timer);
   }, [isExerciseActive, timeRemaining, updateTimeRemaining]);
 
-  // Enhanced journalist call logic
   useEffect(() => {
     if (!showInbrief && !showQuestionnaire && !showSummary) {
       const checkJournalist = () => {
@@ -128,7 +126,6 @@ const Exercise = () => {
     }
   }, [showInbrief, showQuestionnaire, showSummary, lastEventTime, showJournalist]);
 
-  // Enhanced dynamic events generation
   useEffect(() => {
     if (!showInbrief && !showQuestionnaire && !showSummary) {
       const generateEvents = () => {
@@ -471,9 +468,7 @@ const Exercise = () => {
                         message.type === 'system' ? 'bg-muted' :
                         message.type === 'decision' ? 'bg-blue-50 dark:bg-blue-900/20' :
                         message.type === 'followup' ? 'bg-green-50 dark:bg-green-900/20' :
-                        'bg
-
--yellow-50 dark:bg-yellow-900/20'
+                        'bg-yellow-50 dark:bg-yellow-900/20'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">

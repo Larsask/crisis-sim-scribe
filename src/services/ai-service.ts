@@ -36,32 +36,32 @@ const generateAIResponse = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',  // Updated to use GPT-4
+        model: 'gpt-3.5-turbo',  // Using GPT-3.5 as requested
         messages: [
           {
             role: 'system',
             content: `You are an AI crisis management assistant analyzing real-time decisions in a crisis scenario. 
-            Generate detailed, realistic responses considering:
+            Consider:
             - Current crisis severity: ${context.currentSeverity}
             - Stakeholder mood: ${context.stakeholderMood}
             - Communication style: ${context.style || 'neutral'}
             - Response tone: ${context.tone || 'formal'}
+            - Past decisions: ${context.pastDecisions.join(', ')}
             
             Format the response as:
-            1. Main analysis
-            2. List of immediate consequences (start each with -)
+            1. Main analysis (2-3 sentences)
+            2. List immediate consequences (start each with -)
             3. Key stakeholder reactions (start each with -)
             4. Suggested next actions (start each with -)`
           },
           {
             role: 'user',
             content: `Decision made: "${decision}"
-            Previous decisions: ${context.pastDecisions.join(', ')}
             
-            Provide a comprehensive analysis of this decision's impact.`
+            Analyze this decision's impact considering all past context and current situation.`
           }
         ],
-        temperature: 0.8,  // Increased for more creative responses
+        temperature: 0.7,
         max_tokens: 1000
       })
     });
@@ -81,8 +81,8 @@ const generateAIResponse = async (
     const stakeholderReactions = sections[2]?.split('\n')
       .filter(line => line.startsWith('-'))
       .map(line => ({
-        group: "Stakeholder",
-        reaction: line.substring(2),
+        group: line.includes(':') ? line.split(':')[0].substring(2) : "Stakeholder",
+        reaction: line.includes(':') ? line.split(':')[1].trim() : line.substring(2),
         urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
       })) || [{
         group: "Media",
@@ -147,18 +147,23 @@ const generateNewsArticle = async ({ headline, context, tone }: NewsArticleParam
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',  // Updated to use GPT-4
+        model: 'gpt-3.5-turbo',  // Using GPT-3.5 as requested
         messages: [
           {
             role: 'system',
-            content: `You are an experienced journalist writing a news article about an ongoing crisis. 
-            Your tone should be ${tone}. Write a concise, factual article that maintains journalistic standards.`
+            content: `You are an experienced journalist writing about an ongoing crisis.
+            Write a concise, factual article with:
+            - A clear lead paragraph
+            - Relevant background context
+            - At least one quote from a stakeholder
+            - Impact assessment
+            Maintain a ${tone} tone throughout.`
           },
           {
             role: 'user',
             content: `Write a news article with the headline: "${headline}"
             Context: ${context}
-            Include quotes from relevant stakeholders and maintain a ${tone} tone throughout the article.`
+            Include realistic quotes and maintain journalistic standards.`
           }
         ],
         temperature: 0.7,

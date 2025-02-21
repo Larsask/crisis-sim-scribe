@@ -60,7 +60,24 @@ class CrisisMemoryManager {
       .map(i => i.response)
       .join(". ");
 
-    return `${context} (Previous interaction context: ${recentInteractions})`;
+    const sentimentPattern = this.analyzeSentimentPattern(memory.pastInteractions);
+    let modifier = "";
+
+    switch (sentimentPattern) {
+      case 'consistently_negative':
+        modifier = "Given your previous responses, we require more concrete assurances. ";
+        break;
+      case 'improving':
+        modifier = "We appreciate your recent cooperation. However, ";
+        break;
+      case 'deteriorating':
+        modifier = "Our confidence is waning based on recent interactions. ";
+        break;
+      default:
+        modifier = "";
+    }
+
+    return `${modifier}${context} (Previous interaction context: ${recentInteractions})`;
   }
 
   shouldEscalate(event: CrisisEvent): boolean {
@@ -85,6 +102,18 @@ class CrisisMemoryManager {
 
     if (hasPositive && !hasNegative) return 'positive';
     if (hasNegative) return 'negative';
+    return 'neutral';
+  }
+
+  private analyzeSentimentPattern(interactions: NPCMemory['pastInteractions']): 'consistently_negative' | 'improving' | 'deteriorating' | 'neutral' {
+    if (interactions.length < 3) return 'neutral';
+
+    const recent = interactions.slice(-3);
+    const sentiments = recent.map(i => i.sentiment);
+    
+    if (sentiments.every(s => s === 'negative')) return 'consistently_negative';
+    if (sentiments[0] === 'negative' && sentiments[2] === 'positive') return 'improving';
+    if (sentiments[0] === 'positive' && sentiments[2] === 'negative') return 'deteriorating';
     return 'neutral';
   }
 
@@ -122,6 +151,20 @@ class CrisisMemoryManager {
 
   getNPCStatus(sender: string): NPCMemory | undefined {
     return this.npcMemory.get(sender);
+  }
+
+  getResponseUrgency(sender: string): 'normal' | 'urgent' | 'critical' {
+    const memory = this.npcMemory.get(sender);
+    if (!memory) return 'normal';
+
+    const recentNegative = memory.pastInteractions
+      .slice(-3)
+      .filter(i => i.sentiment === 'negative')
+      .length;
+
+    if (recentNegative >= 2) return 'critical';
+    if (recentNegative >= 1) return 'urgent';
+    return 'normal';
   }
 }
 

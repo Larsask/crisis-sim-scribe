@@ -3,16 +3,20 @@ import { useState, useEffect, useRef } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, Phone, PhoneOff, MessageSquare } from 'lucide-react';
+import { 
+  Mic, Phone, PhoneOff, MessageSquare, 
+  PhoneIncoming, UserX, Clock 
+} from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 
 interface JournalistCallProps {
   onClose: () => void;
   onResponse: (response: string) => void;
+  onDecline?: () => void;
 }
 
-export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => {
+export const JournalistCall = ({ onClose, onResponse, onDecline }: JournalistCallProps) => {
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -21,14 +25,59 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
   const [textResponse, setTextResponse] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState("This is Sarah Chen from Global News. We've received reports about the ongoing situation. Can you provide an official statement?");
   const [hasResponded, setHasResponded] = useState(false);
+  const [callState, setCallState] = useState<'incoming' | 'active' | 'declined' | 'failed'>('incoming');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Auto-decline call after 30 seconds if not answered
+    const timeout = setTimeout(() => {
+      if (callState === 'incoming') {
+        handleDecline();
+      }
+    }, 30000);
+    
+    setTimeoutId(timeout);
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [callState]);
+
+  const handleAccept = async () => {
+    setCallState('active');
+    if (timeoutId) clearTimeout(timeoutId);
+    
     if (!textMode) {
-      playJournalistVoice();
+      try {
+        await playJournalistVoice();
+      } catch (error) {
+        console.error('Failed to start voice call:', error);
+        toast({
+          title: "Voice Call Failed",
+          description: "Switching to text mode for this conversation.",
+          variant: "destructive"
+        });
+        setTextMode(true);
+      }
     }
-  }, [textMode]);
+  };
+
+  const handleDecline = () => {
+    setCallState('declined');
+    if (timeoutId) clearTimeout(timeoutId);
+    
+    toast({
+      title: "Call Declined",
+      description: "The journalist may publish without your input.",
+      variant: "destructive"
+    });
+    
+    if (onDecline) onDecline();
+    
+    // Auto-close after showing the message
+    setTimeout(onClose, 3000);
+  };
 
   const playJournalistVoice = async () => {
     setIsLoading(true);
@@ -68,7 +117,7 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
       setAudioUrl(url);
 
       const audio = new Audio(url);
-      audio.play();
+      await audio.play();
       
     } catch (error) {
       console.error('Error:', error);
@@ -84,17 +133,15 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
   };
 
   const handleResponse = async (response: string) => {
-    if (hasResponded) {
-      return;
-    }
+    if (hasResponded) return;
 
     setHasResponded(true);
     onResponse(response);
 
-    // Simulate Sarah Chen's reaction
+    // Simulate Sarah Chen's reaction with follow-up questions
     const reactions = [
       "I understand your position, but our viewers deserve more details. Can you elaborate?",
-      "That's an interesting perspective. How do you respond to critics who say otherwise?",
+      "That's interesting. How do you respond to critics who say otherwise?",
       "We'll be running this story in tonight's news. Would you like to add anything else?"
     ];
     
@@ -124,7 +171,6 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const audioUrl = URL.createObjectURL(audioBlob);
-        // Here you could send the audio to a speech-to-text service
         console.log('Recording stopped, audio URL:', audioUrl);
       };
 
@@ -154,11 +200,59 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
     "We're working closely with all stakeholders to resolve this matter.",
   ];
 
+  if (callState === 'incoming') {
+    return (
+      <Card className="fixed inset-0 m-auto w-[450px] h-[200px] p-6 flex flex-col justify-between bg-background/95 backdrop-blur shadow-lg">
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <PhoneIncoming className="h-6 w-6 text-blue-500 animate-pulse" />
+            <h3 className="font-semibold text-lg">Incoming Call: Sarah Chen - Global News</h3>
+          </div>
+          <p className="text-muted-foreground">Journalist requesting statement</p>
+        </div>
+        
+        <div className="flex justify-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-12 w-12 rounded-full bg-red-500 hover:bg-red-600"
+            onClick={handleDecline}
+          >
+            <PhoneOff className="h-6 w-6 text-white" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600"
+            onClick={handleAccept}
+          >
+            <Phone className="h-6 w-6 text-white" />
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (callState === 'declined') {
+    return (
+      <Card className="fixed inset-0 m-auto w-[450px] h-[200px] p-6 flex flex-col justify-between bg-background/95 backdrop-blur">
+        <div className="text-center space-y-4">
+          <UserX className="h-12 w-12 text-red-500 mx-auto" />
+          <h3 className="font-semibold text-lg">Call Declined</h3>
+          <p className="text-muted-foreground">The journalist may publish without your input</p>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="fixed inset-0 m-auto w-[450px] h-auto max-h-[80vh] p-6 flex flex-col justify-between bg-background/95 backdrop-blur overflow-y-auto">
       <div className="text-center mb-6">
         <h3 className="font-semibold text-lg mb-2">Sarah Chen - Global News</h3>
-        <p className="text-muted-foreground mb-4">{currentQuestion}</p>
+        <div className="bg-muted p-4 rounded-lg mb-4 text-left">
+          <p className="text-muted-foreground">{currentQuestion}</p>
+        </div>
         
         {textMode && (
           <div className="space-y-4">

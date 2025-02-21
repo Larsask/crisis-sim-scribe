@@ -1,4 +1,3 @@
-
 import { StakeholderMessage, CrisisEvent } from '@/types/crisis';
 
 interface NPCMemory {
@@ -43,53 +42,11 @@ class CrisisMemoryManager {
       sentiment
     });
 
-    // Update relationship status based on recent interactions
     memory.relationshipStatus = this.calculateRelationshipStatus(memory.pastInteractions);
     memory.lastInteraction = Date.now();
 
     this.npcMemory.set(sender, memory);
     this.updateCrisisState(sentiment);
-  }
-
-  generateResponse(sender: string, context: string): string {
-    const memory = this.npcMemory.get(sender);
-    if (!memory) return context;
-
-    const recentInteractions = memory.pastInteractions
-      .slice(-3)
-      .map(i => i.response)
-      .join(". ");
-
-    const sentimentPattern = this.analyzeSentimentPattern(memory.pastInteractions);
-    let modifier = "";
-
-    switch (sentimentPattern) {
-      case 'consistently_negative':
-        modifier = "Given your previous responses, we require more concrete assurances. ";
-        break;
-      case 'improving':
-        modifier = "We appreciate your recent cooperation. However, ";
-        break;
-      case 'deteriorating':
-        modifier = "Our confidence is waning based on recent interactions. ";
-        break;
-      default:
-        modifier = "";
-    }
-
-    return `${modifier}${context} (Previous interaction context: ${recentInteractions})`;
-  }
-
-  shouldEscalate(event: CrisisEvent): boolean {
-    const currentSeverity = this.crisisState.severity;
-    const lowTrust = this.crisisState.publicTrust < 50;
-    const highAttention = this.crisisState.mediaAttention > 70;
-
-    return (
-      currentSeverity === 'high' ||
-      (lowTrust && highAttention) ||
-      this.crisisState.internalMorale < 40
-    );
   }
 
   private analyzeSentiment(response: string): 'positive' | 'neutral' | 'negative' {
@@ -130,12 +87,11 @@ class CrisisMemoryManager {
 
   private updateCrisisState(sentiment: 'positive' | 'neutral' | 'negative') {
     const impact = sentiment === 'positive' ? 5 : sentiment === 'negative' ? -10 : -2;
-
+    
     this.crisisState.publicTrust = Math.max(0, Math.min(100, this.crisisState.publicTrust + impact));
     this.crisisState.mediaAttention = Math.max(0, Math.min(100, this.crisisState.mediaAttention + (sentiment === 'negative' ? 15 : 5)));
     this.crisisState.internalMorale = Math.max(0, Math.min(100, this.crisisState.internalMorale + (impact / 2)));
 
-    // Update severity based on crisis state
     if (this.crisisState.publicTrust < 30 || this.crisisState.mediaAttention > 80) {
       this.crisisState.severity = 'high';
     } else if (this.crisisState.publicTrust < 60 || this.crisisState.mediaAttention > 50) {

@@ -1,3 +1,4 @@
+
 import { StakeholderMessage, CrisisEvent } from '@/types/crisis';
 
 interface NPCMemory {
@@ -47,6 +48,43 @@ class CrisisMemoryManager {
 
     this.npcMemory.set(sender, memory);
     this.updateCrisisState(sentiment);
+  }
+
+  shouldEscalate(event: CrisisEvent): boolean {
+    // Check if this event should trigger an escalation
+    const isHighImpactDecision = event.type === 'decision' && (
+      event.content.toLowerCase().includes('shutdown') ||
+      event.content.toLowerCase().includes('immediate') ||
+      event.content.toLowerCase().includes('emergency')
+    );
+
+    const isNegativeResponse = event.type === 'decision' && 
+      this.analyzeSentiment(event.content) === 'negative';
+
+    const isCriticalState = 
+      this.crisisState.publicTrust < 40 || 
+      this.crisisState.mediaAttention > 75;
+
+    return isHighImpactDecision || isNegativeResponse || isCriticalState;
+  }
+
+  generateResponse(sender: string, baseResponse: string): string {
+    const memory = this.npcMemory.get(sender);
+    if (!memory) return baseResponse;
+
+    const sentiment = memory.relationshipStatus;
+    const pattern = this.analyzeSentimentPattern(memory.pastInteractions);
+
+    // Modify response based on relationship and pattern
+    if (pattern === 'consistently_negative') {
+      return `${baseResponse} Your previous responses have not addressed our concerns adequately.`;
+    } else if (pattern === 'improving') {
+      return `${baseResponse} We appreciate your recent efforts to address the situation.`;
+    } else if (pattern === 'deteriorating') {
+      return `${baseResponse} Our confidence in your handling of this situation is declining.`;
+    }
+
+    return baseResponse;
   }
 
   private analyzeSentiment(response: string): 'positive' | 'neutral' | 'negative' {

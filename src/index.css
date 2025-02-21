@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -76,7 +75,7 @@
   }
 }
 
-/* Crisis Flowchart Styles */
+/* Crisis Node Styles */
 .crisis-node-system {
   @apply bg-muted shadow-lg ring-1 ring-black/5;
 }
@@ -95,50 +94,4 @@
 
 .crisis-node-option {
   @apply bg-primary/5 shadow-lg ring-1 ring-primary/20;
-}
-
-.react-flow__node {
-  @apply transition-shadow duration-200;
-}
-
-.react-flow__node:hover {
-  @apply shadow-xl;
-}
-
-.react-flow__node.expanded {
-  @apply shadow-xl;
-}
-
-.react-flow__edge-path {
-  @apply stroke-2;
-}
-
-.react-flow__controls {
-  @apply bg-background border rounded-lg shadow-md;
-}
-
-.react-flow__controls button {
-  @apply border-0 hover:bg-muted transition-colors;
-}
-
-.react-flow__minimap {
-  @apply bg-background border rounded-lg shadow-md;
-}
-
-.react-flow__attribution {
-  @apply bg-transparent;
-}
-
-/* Dark mode adjustments */
-.dark .react-flow__controls,
-.dark .react-flow__minimap {
-  @apply bg-background border-border;
-}
-
-.dark .react-flow__controls button:hover {
-  @apply bg-muted;
-}
-
-.dark .react-flow__node {
-  @apply text-foreground;
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -12,7 +13,7 @@ import { scenarios } from '@/data/scenarios';
 import { useNavigate } from 'react-router-dom';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
 import { DecisionOption, CrisisEvent } from '@/types/crisis';
-import { generateDynamicUpdates, shouldTriggerJournalistCall } from '@/utils/scenario-generator';
+import { generateDynamicUpdates, shouldTriggerJournalistCall, generateStakeholderMessage } from '@/utils/scenario-generator';
 
 const durationToMs = (duration: string): number => {
   switch (duration) {

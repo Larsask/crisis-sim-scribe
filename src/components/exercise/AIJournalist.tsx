@@ -45,16 +45,18 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
       const { data: secretData, error: secretError } = await supabase
         .rpc('get_secret', { secret_name: 'ELEVENLABS_API_KEY' });
 
-      if (secretError || !secretData) {
+      if (secretError || !secretData || !secretData[0]) {
         throw new Error('Failed to retrieve API key');
       }
+
+      const apiKey = secretData[0].value;
 
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL', {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': secretData
+          'xi-api-key': apiKey
         },
         body: JSON.stringify({
           text: "This is Sarah Chen from Global News. We've received reports about the ongoing situation at your company. Can you confirm the details and provide an official statement?",

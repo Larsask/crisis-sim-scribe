@@ -1,4 +1,3 @@
-
 import { StakeholderMessage, CrisisEvent } from '@/types/crisis';
 
 interface NPCMemory {
@@ -19,6 +18,13 @@ interface CrisisState {
   internalMorale: number;
 }
 
+interface StakeholderMemory {
+  lastInteraction: number;
+  interactionCount: number;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  preferredChannel: 'call' | 'email' | 'text';
+}
+
 class CrisisMemoryManager {
   private npcMemory: Map<string, NPCMemory> = new Map();
   private crisisState: CrisisState = {
@@ -27,6 +33,7 @@ class CrisisMemoryManager {
     mediaAttention: 0,
     internalMorale: 100
   };
+  private stakeholderMemory: Map<string, StakeholderMemory> = new Map();
 
   addInteraction(sender: string, messageId: string, response: string) {
     const memory = this.npcMemory.get(sender) || {
@@ -48,6 +55,47 @@ class CrisisMemoryManager {
 
     this.npcMemory.set(sender, memory);
     this.updateCrisisState(sentiment);
+  }
+
+  updateStakeholderMemory(stakeholder: string, interaction: {
+    type: 'call' | 'email' | 'text',
+    response?: string,
+    declined?: boolean
+  }) {
+    const memory = this.stakeholderMemory.get(stakeholder) || {
+      lastInteraction: Date.now(),
+      interactionCount: 0,
+      sentiment: 'neutral',
+      preferredChannel: 'email'
+    };
+
+    memory.lastInteraction = Date.now();
+    memory.interactionCount++;
+
+    if (interaction.declined) {
+      memory.sentiment = 'negative';
+      memory.preferredChannel = 'email';
+    } else if (interaction.response) {
+      const sentiment = this.analyzeSentiment(interaction.response);
+      memory.sentiment = sentiment;
+    }
+
+    this.stakeholderMemory.set(stakeholder, memory);
+  }
+
+  shouldContactStakeholder(stakeholder: string): boolean {
+    const memory = this.stakeholderMemory.get(stakeholder);
+    if (!memory) return true;
+
+    const timeSinceLastInteraction = Date.now() - memory.lastInteraction;
+    const minInterval = memory.sentiment === 'negative' ? 3 * 60 * 1000 : 5 * 60 * 1000;
+
+    return timeSinceLastInteraction > minInterval;
+  }
+
+  getPreferredChannel(stakeholder: string): 'call' | 'email' | 'text' {
+    const memory = this.stakeholderMemory.get(stakeholder);
+    return memory?.preferredChannel || 'email';
   }
 
   shouldEscalate(event: CrisisEvent): boolean {

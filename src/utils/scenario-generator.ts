@@ -11,70 +11,46 @@ export const generateDynamicUpdates = async (
 ): Promise<CrisisEvent[]> => {
   const updates: CrisisEvent[] = [];
   
-  if (timeSkipped) {
-    // Multiple events must occur when time is skipped
-    const escalationEvents = [
-      "A whistleblower has leaked internal documents to the press.",
-      "Social media backlash is intensifying as the story spreads.",
-      "Industry experts are publicly questioning company practices.",
-      "Competitors are distancing themselves from similar AI technologies.",
-      "Employee concerns about the situation are being shared online.",
-      "Regulatory bodies are requesting immediate clarification.",
-      "Investment analysts are revising their recommendations.",
-      "Media outlets are preparing in-depth investigative reports."
-    ];
+  // Calculate number of events to generate based on crisis severity and time skipped
+  const numEvents = timeSkipped ? 
+    (crisisState.severity === 'high' ? 4 : 3) : 
+    (Math.random() > 0.7 ? 1 : 0);
 
-    // Add 2-4 escalation events when time is skipped
-    const numEvents = Math.floor(Math.random() * 3) + 2;
-    for (let i = 0; i < numEvents; i++) {
-      const eventContent = escalationEvents[Math.floor(Math.random() * escalationEvents.length)];
-      updates.push({
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'media',
-        content: eventContent,
-        timestamp: Date.now() + (i * 1000),
-        status: 'escalated',
-        severity: 'high'
+  // Generate base events
+  for(let i = 0; i < numEvents; i++) {
+    const eventTypes = ['media', 'stakeholder', 'internal', 'regulatory'];
+    const selectedType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+    
+    // Generate event content based on type
+    let content;
+    let severity;
+    
+    if (selectedType === 'media') {
+      const headline = `AI Ethics Controversy Continues to Unfold`;
+      const article = await aiService.generateNewsArticle({
+        headline,
+        context: `Recent actions: ${pastEvents.slice(-3).map(e => e.content).join('. ')}`,
+        tone: crisisState.publicTrust < 50 ? 'critical' : 'neutral'
       });
+      content = article;
+      severity = 'high';
+    } else {
+      content = await aiService.generateStakeholderUpdate(crisisState, pastEvents);
+      severity = crisisState.severity;
     }
 
-    // Add stakeholder reactions to time skip
-    if (crisisState.publicTrust < 70) {
-      updates.push({
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'stakeholder',
-        content: "Key stakeholders are demanding an emergency meeting to discuss the situation.",
-        timestamp: Date.now() + 3000,
-        status: 'active',
-        severity: 'high'
-      });
-    }
+    updates.push({
+      id: Math.random().toString(36).substr(2, 9),
+      type: selectedType,
+      content,
+      timestamp: Date.now() + (i * 1000),
+      status: severity === 'high' ? 'escalated' : 'active',
+      severity
+    });
+  }
 
-    // Add media pressure if attention is high
-    if (crisisState.mediaAttention > 60) {
-      updates.push({
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'media',
-        content: "Multiple news outlets are preparing in-depth coverage of the situation.",
-        timestamp: Date.now() + 4000,
-        status: 'escalated',
-        severity: 'high'
-      });
-    }
-
-    // Internal response when morale is affected
-    if (crisisState.internalMorale < 70) {
-      updates.push({
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'internal',
-        content: "Employee satisfaction metrics are declining rapidly. HR reports increasing concerns.",
-        timestamp: Date.now() + 5000,
-        status: 'active',
-        severity: 'medium'
-      });
-    }
-  } else if (decision) {
-    // Generate immediate consequences for decisions
+  // Add consequences for decisions
+  if (decision) {
     const aiResponse = await aiService.generateResponse(decision, {
       pastDecisions: pastEvents.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: crisisState.severity,
@@ -111,17 +87,18 @@ export const shouldTriggerJournalistCall = (
   events: CrisisEvent[],
   timeSkipped: boolean = false
 ): boolean => {
-  const lastDecisionTime = events
-    .filter(e => e.type === 'decision')
+  const lastCallTime = events
+    .filter(e => e.type === 'call')
     .sort((a, b) => b.timestamp - a.timestamp)[0]?.timestamp;
 
-  const timeSinceLastDecision = lastDecisionTime ? Date.now() - lastDecisionTime : Infinity;
+  const timeSinceLastCall = lastCallTime ? Date.now() - lastCallTime : Infinity;
   const hasHighSeverityEvents = events.some(e => e.severity === 'high');
+  const minimumCallInterval = 5 * 60 * 1000; // 5 minutes
 
   return (
-    (hasHighSeverityEvents && timeSinceLastDecision > 60000) || // 1 minute after high severity event
-    (crisisState.mediaAttention > 70) ||
-    (timeSkipped && Math.random() > 0.5) // 50% chance after time skip
+    (hasHighSeverityEvents && timeSinceLastCall > minimumCallInterval) ||
+    (crisisState.mediaAttention > 70 && timeSinceLastCall > minimumCallInterval) ||
+    (timeSkipped && Math.random() > 0.7 && timeSinceLastCall > minimumCallInterval)
   );
 };
 
@@ -132,26 +109,34 @@ export const generateStakeholderMessage = (
   const recentEvents = events.slice(-5);
   const hasHighSeverity = recentEvents.some(e => e.severity === 'high');
   const hasUrgentMedia = recentEvents.some(e => e.type === 'media' && e.status === 'escalated');
+  
+  // Determine communication type based on urgency and past interactions
+  const lastInteraction = events
+    .filter(e => e.type === 'stakeholder')
+    .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+  const shouldUseEmail = hasHighSeverity || hasUrgentMedia;
+  const type = shouldUseEmail ? 'email' : 'text';
 
   if (hasHighSeverity || hasUrgentMedia) {
     return {
-      type: 'email',
-      content: "Urgent: Stakeholder committee requests immediate briefing on crisis developments.",
+      type,
+      content: await aiService.generateStakeholderUpdate(crisisState, recentEvents),
       urgency: 'critical'
     };
   }
 
   if (crisisState.publicTrust < 50) {
     return {
-      type: 'email',
-      content: "Public trust metrics are concerning. Please review attached stakeholder feedback.",
+      type,
+      content: await aiService.generateStakeholderUpdate(crisisState, recentEvents),
       urgency: 'urgent'
     };
   }
 
   return {
     type: 'text',
-    content: "Team members are requesting guidance on external communications.",
+    content: await aiService.generateStakeholderUpdate(crisisState, recentEvents),
     urgency: 'normal'
   };
 };

@@ -148,27 +148,40 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     setFollowUpMessage(null);
   }, [handleDecision]);
 
-  const handleTimeSkip = async () => {
+  const handleTimeSkip = useCallback(async () => {
     setIsTimeSkipping(true);
+    const crisisState = crisisMemoryManager.getCrisisState();
     
-    await fastForward();
+    const skipUpdates = await generateDynamicUpdates(null, crisisState, events, true);
     
-    const updates = await generateDynamicUpdates(
-      null,
-      crisisMemoryManager.getCrisisState(),
-      events,
-      true
-    );
+    for (const update of skipUpdates) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      addEvent(update);
 
-    setPendingUpdates(prev => [...prev, ...updates]);
+      if (update.type === 'stakeholder' && update.severity === 'high') {
+        const message = await generateStakeholderMessage(crisisState, [...events, update]);
+        if (message) {
+          addMessage({
+            id: Math.random().toString(36).substr(2, 9),
+            sender: update.content.split(':')[0],
+            content: message.content,
+            timestamp: Date.now(),
+            type: message.type,
+            urgency: message.urgency,
+            status: 'unread',
+            responseDeadline: Date.now() + 300000
+          });
+        }
+      }
+    }
 
-    if (shouldTriggerJournalistCall(crisisMemoryManager.getCrisisState(), events, true)) {
+    if (shouldTriggerJournalistCall(crisisState, events, true)) {
       setJournalistCallState('incoming');
       setShowJournalistCall(true);
     }
 
     setIsTimeSkipping(false);
-  };
+  }, [events, addEvent, addMessage]);
 
   const endExercise = useCallback(() => {
     setIsExerciseEnded(true);

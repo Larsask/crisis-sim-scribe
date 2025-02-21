@@ -1,5 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { AIResponse, DecisionOption } from '@/types/crisis-enhanced';
+import { AIResponse } from '@/types/crisis-enhanced';
+import { DecisionOption } from '@/types/crisis';
 
 interface AIRequestContext {
   pastDecisions: string[];

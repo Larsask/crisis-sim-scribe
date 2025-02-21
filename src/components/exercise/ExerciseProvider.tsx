@@ -26,7 +26,25 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
   } | null>(null);
   const [followUpMessage, setFollowUpMessage] = useState<FollowUpMessage | null>(null);
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
-  
+  const [config, setConfig] = useState<ExerciseConfig>({
+    timeBasedEvents: {
+      frequency: 'medium',
+      intensity: 'gradual',
+      categories: ['media', 'stakeholder', 'internal', 'government', 'competitor']
+    },
+    aiResponses: {
+      style: 'neutral',
+      tone: 'formal',
+      includeSuggestions: true
+    },
+    voiceSettings: {
+      enabled: true,
+      voice: 'alloy',
+      autoPlayAudio: true,
+      transcribeResponses: true
+    }
+  });
+
   const { 
     category,
     scenarioId,
@@ -233,7 +251,10 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     const aiResponse = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: responseType === 'inappropriate' ? 'high' : 'medium',
-      stakeholderMood: responseType === 'inappropriate' ? 'negative' : 'neutral'
+      stakeholderMood: responseType === 'inappropriate' ? 'negative' : 'neutral',
+      style: config.aiResponses.style,
+      tone: config.aiResponses.tone,
+      includeSuggestions: config.aiResponses.includeSuggestions
     });
 
     const newEvents: CrisisEvent[] = [
@@ -436,6 +457,45 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [isExerciseActive, startExercise, duration, updateTimeRemaining, currentScenario]);
 
+  useEffect(() => {
+    if (!isExerciseActive) return;
+
+    const intervalTime = {
+      low: 60000, // 1 minute
+      medium: 30000, // 30 seconds
+      high: 15000 // 15 seconds
+    }[config.timeBasedEvents.frequency];
+
+    const interval = setInterval(() => {
+      const dueEvents = crisisTimelineService.getDueEvents(Date.now());
+      const filteredEvents = dueEvents.filter(event => 
+        config.timeBasedEvents.categories.includes(event.type)
+      );
+
+      if (filteredEvents.length > 0) {
+        const newMessages = filteredEvents.map(event => ({
+          id: Math.random().toString(36).substr(2, 9),
+          sender: event.type === 'media' ? 'Press Office' : 'Crisis Team',
+          content: event.content,
+          timestamp: Date.now(),
+          urgency: event.severity,
+          type: 'text',
+          status: 'unread',
+          responseDeadline: Date.now() + 300000, // 5 minutes
+          responseOptions: event.options?.map(opt => ({
+            text: opt.text,
+            impact: opt.impact,
+            consequence: opt.consequence
+          }))
+        }));
+
+        setMessages(prev => [...prev, ...newMessages]);
+      }
+    }, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [isExerciseActive, config.timeBasedEvents.frequency]);
+
   const handleStakeholderResponse = (messageId: string, response: string) => {
     handleDecision(response, true);
     setMessages(prev => prev.filter(m => m.id !== messageId));
@@ -476,6 +536,8 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   const value = {
+    config,
+    setConfig,
     events,
     messages,
     currentStepId,

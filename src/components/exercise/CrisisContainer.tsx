@@ -4,6 +4,8 @@ import { CrisisResponseFlow } from './CrisisResponseFlow';
 import { CurrentSituation } from './CurrentSituation';
 import { StakeholderMessages } from './StakeholderMessages';
 import { JournalistCall } from './JournalistCall';
+import { FollowUpBox } from './FollowUpBox';
+import { ExerciseConfigPanel } from './ExerciseConfig';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -19,11 +21,15 @@ export const CrisisContainer = () => {
     timeRemaining,
     scenarioBrief,
     showJournalistCall,
+    followUpMessage,
+    config,
+    setConfig,
     onDecision,
     onTimeSkip,
     onStakeholderResponse,
     onMessageDismiss,
     onJournalistResponse,
+    onFollowUpResponse,
     setShowJournalistCall
   } = useExerciseContext();
 
@@ -45,6 +51,13 @@ export const CrisisContainer = () => {
               events={events}
               timeRemaining={timeRemaining}
             />
+            {followUpMessage && (
+              <FollowUpBox
+                message={followUpMessage}
+                onResponse={onFollowUpResponse}
+                onDismiss={() => onFollowUpResponse("")}
+              />
+            )}
           </div>
 
           <div className="space-y-6">
@@ -71,6 +84,11 @@ export const CrisisContainer = () => {
             onResponse={onJournalistResponse}
           />
         )}
+
+        <ExerciseConfigPanel
+          config={config}
+          onConfigChange={setConfig}
+        />
       </div>
     </div>
   );

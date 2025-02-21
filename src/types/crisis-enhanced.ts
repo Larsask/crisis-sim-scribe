@@ -1,4 +1,3 @@
-
 export interface TimeBasedEvent {
   triggerTime: number; // in milliseconds from start
   type: 'media' | 'stakeholder' | 'internal' | 'government' | 'competitor';
@@ -45,4 +44,23 @@ export interface FollowUpMessage {
   }[];
   deadline?: number;
   urgency: 'normal' | 'urgent' | 'critical';
+}
+
+export interface ExerciseConfig {
+  timeBasedEvents: {
+    frequency: 'low' | 'medium' | 'high';
+    intensity: 'gradual' | 'intense';
+    categories: ('media' | 'stakeholder' | 'internal' | 'government' | 'competitor')[];
+  };
+  aiResponses: {
+    style: 'concise' | 'detailed' | 'analytical';
+    tone: 'formal' | 'neutral' | 'urgent';
+    includeSuggestions: boolean;
+  };
+  voiceSettings: {
+    enabled: boolean;
+    voice: 'alloy' | 'echo' | 'onyx' | 'nova' | 'shimmer';
+    autoPlayAudio: boolean;
+    transcribeResponses: boolean;
+  };
 }

@@ -500,6 +500,10 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     return stakeholderReaction;
   };
 
+  const handleMessageDismiss = (messageId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+  };
+
   useEffect(() => {
     if (!category || !scenarioId || !complexity || !duration) {
       navigate('/scenario-setup');

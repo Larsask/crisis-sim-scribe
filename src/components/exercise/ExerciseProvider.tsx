@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -103,46 +102,45 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
 
   const handleDecision = useCallback(async (text: string, isCustom: boolean) => {
     const crisisState = crisisMemoryManager.getCrisisState();
-    const newEvents = handleDecisionEvent(text, crisisState.severity);
+    crisisMemoryManager.updateCrisisState(text, events);
     
-    const updates = await generateDynamicUpdates(text, crisisState, events);
-    setPendingUpdates(prev => [...prev, ...updates]);
+    const newEvents = await generateDynamicUpdates(text, crisisState, events);
+    addEvents(newEvents);
 
     try {
-      const newOptions = await aiService.generateNewOptions({
-        decision: text,
-        crisisState,
-        pastEvents: events
-      });
-      setAvailableOptions(newOptions);
+      const newOptions = crisisMemoryManager.getNextAvailableActions(events);
+      setAvailableOptions(newOptions.map(text => ({
+        id: Math.random().toString(36).substr(2, 9),
+        text,
+        impact: 'medium',
+        consequence: 'Will update crisis situation'
+      })));
     } catch (error) {
       console.error('Error generating new options:', error);
-      setAvailableOptions([
-        {
-          id: '1',
-          text: 'Monitor the situation',
-          impact: 'low',
-          consequence: 'Allows time for proper assessment'
-        }
-      ]);
+      setAvailableOptions([{
+        id: '1',
+        text: 'Monitor the situation',
+        impact: 'low',
+        consequence: 'Allows time for proper assessment'
+      }]);
     }
 
     const response = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: crisisState.severity,
-      stakeholderMood: crisisState.publicTrust < 50 ? 'negative' : 'neutral',
-      style: config.aiResponses.style,
-      tone: config.aiResponses.tone,
-      includeSuggestions: config.aiResponses.includeSuggestions
+      stakeholderMood: crisisState.publicTrust < 50 ? 'negative' : 'neutral'
     });
 
     setAiResponse(response);
 
     if (shouldTriggerJournalistCall(crisisState, events)) {
-      setJournalistCallState('incoming');
-      setShowJournalistCall(true);
+      const journalistMemory = crisisMemoryManager.getStakeholderStatus('Sarah Chen');
+      if (journalistMemory?.preferredChannel === 'call' && crisisMemoryManager.shouldContactStakeholder('Sarah Chen')) {
+        setJournalistCallState('incoming');
+        setShowJournalistCall(true);
+      }
     }
-  }, [events, config, setAvailableOptions, handleDecisionEvent]);
+  }, [events, addEvents, setAvailableOptions]);
 
   const handleFollowUpResponse = useCallback((response: string) => {
     handleDecision(response, true);
@@ -162,7 +160,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       if (update.type === 'stakeholder' && update.severity === 'high') {
         try {
           const message = await generateStakeholderMessage(crisisState, [...events, update]);
-          if (message) {
+          if (message && crisisMemoryManager.shouldContactStakeholder(update.content.split(':')[0])) {
             addMessage({
               id: Math.random().toString(36).substr(2, 9),
               sender: update.content.split(':')[0],
@@ -181,8 +179,11 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     }
 
     if (shouldTriggerJournalistCall(crisisState, events, true)) {
-      setJournalistCallState('incoming');
-      setShowJournalistCall(true);
+      const canContact = crisisMemoryManager.shouldContactStakeholder('Sarah Chen');
+      if (canContact) {
+        setJournalistCallState('incoming');
+        setShowJournalistCall(true);
+      }
     }
 
     setIsTimeSkipping(false);

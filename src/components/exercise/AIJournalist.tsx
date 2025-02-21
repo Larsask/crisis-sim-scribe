@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,75 +10,66 @@ interface AIJournalistProps {
   onDecline: () => void;
 }
 
-interface SecretData {
-  name: string;
-  value: string;
-}
-
 export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [response, setResponse] = useState('');
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [callSessionId, setCallSessionId] = useState<string | null>(null);
+  const [aiReply, setAiReply] = useState<string>('');
 
-  useEffect(() => {
-    let audio: HTMLAudioElement | null = null;
-    if (audioUrl) {
-      audio = new Audio(audioUrl);
-      audio.play();
+  // Fetch API Key from Supabase
+  const fetchApiKey = async () => {
+    const { data, error } = await supabase.rpc('get_secret', { secret_name: 'ELEVENLABS_API_KEY' });
+
+    if (error || !data || !Array.isArray(data) || data.length === 0 || !data[0].value) {
+      console.error('Failed to retrieve API key:', error || 'No data returned');
+      toast({
+        title: "Error",
+        description: "Failed to retrieve ElevenLabs API key. Please check your Supabase settings.",
+        variant: "destructive"
+      });
+      return null;
     }
-    return () => {
-      if (audio) {
-        audio.pause();
-        audio.remove();
-      }
-    };
-  }, [audioUrl]);
+    return data[0].value;
+  };
 
+  // Function to start AI Call
   const handleCall = async () => {
     setIsLoading(true);
     try {
-      // Get the API key from Supabase using RPC call
-      const { data: secretData, error: secretError } = await supabase
-        .rpc('get_secret', { secret_name: 'ELEVENLABS_API_KEY' });
+      const apiKey = await fetchApiKey();
+      if (!apiKey) return;
 
-      if (secretError || !secretData || !secretData[0]) {
-        throw new Error('Failed to retrieve API key');
-      }
-
-      const apiKey = secretData[0].value;
-
-      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL', {
+      // Start a new conversation with the AI journalist
+      const response = await fetch('https://api.elevenlabs.io/v1/conversational-agent/start-call', {
         method: 'POST',
         headers: {
-          'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
           'xi-api-key': apiKey
         },
         body: JSON.stringify({
-          text: "This is Sarah Chen from Global News. We've received reports about the ongoing situation at your company. Can you confirm the details and provide an official statement?",
-          model_id: "eleven_monolingual_v1",
-          voice_settings: {
-            stability: 0.75,
-            similarity_boost: 0.75
+          agent_id: "kvR20HsbaSdUrbclBOzA", // Your ElevenLabs Agent ID
+          prompt: "This is Jimmy Slider from Global News. We've received reports about the ongoing situation at your company. Can you confirm the details and provide an official statement?",
+          settings: {
+            voice: "Alloy",
+            temperature: 0.7
           }
         })
       });
 
-      if (!response.ok) throw new Error('Failed to generate speech');
+      if (!response.ok) throw new Error('Failed to start AI call');
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      setAudioUrl(url);
+      const data = await response.json();
+      setCallSessionId(data.session_id); // Store session ID for tracking conversation
       setIsRecording(true);
 
     } catch (error) {
-      console.error('Error generating speech:', error);
+      console.error('Error initiating call:', error);
       toast({
         title: "Error",
-        description: "Failed to connect with the journalist. Please try again.",
+        description: "Failed to start AI journalist call. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -87,7 +77,8 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
     }
   };
 
-  const handleSubmitResponse = () => {
+  // Function to send user response to AI
+  const handleSubmitResponse = async () => {
     if (!response.trim()) {
       toast({
         title: "Response Required",
@@ -96,7 +87,45 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
       });
       return;
     }
-    onResponse(response);
+    if (!callSessionId) {
+      toast({
+        title: "Error",
+        description: "No active AI call session found.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const apiKey = await fetchApiKey();
+      if (!apiKey) return;
+
+      // Send user message to AI
+      const res = await fetch(`https://api.elevenlabs.io/v1/conversational-agent/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey
+        },
+        body: JSON.stringify({
+          session_id: callSessionId,
+          message: response
+        })
+      });
+
+      if (!res.ok) throw new Error('Failed to send message');
+
+      const responseData = await res.json();
+      setAiReply(responseData.reply); // Store AI reply
+
+    } catch (error) {
+      console.error('Error sending message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message to AI journalist.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handlePostpone = () => {
@@ -137,12 +166,15 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
           }
         </p>
         {isRecording && (
-          <Textarea
-            value={response}
-            onChange={(e) => setResponse(e.target.value)}
-            placeholder="Type your response to the journalist..."
-            className="min-h-[100px]"
-          />
+          <>
+            <Textarea
+              value={response}
+              onChange={(e) => setResponse(e.target.value)}
+              placeholder="Type your response to the journalist..."
+              className="min-h-[100px]"
+            />
+            {aiReply && <p className="text-muted-foreground">📢 AI Reply: {aiReply}</p>}
+          </>
         )}
         <div className="space-y-2">
           <Button 
@@ -153,27 +185,14 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
             {isLoading ? "Connecting..." : "Answer Call"}
           </Button>
           {isRecording && (
-            <Button 
-              className="w-full"
-              onClick={handleSubmitResponse}
-            >
-              Submit Response
+            <Button className="w-full" onClick={handleSubmitResponse}>
+              Send Response
             </Button>
           )}
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={handlePostpone}
-            disabled={isRecording || countdown !== null}
-          >
+          <Button variant="outline" className="w-full" onClick={handlePostpone} disabled={isRecording || countdown !== null}>
             Ask for 2 Minutes
           </Button>
-          <Button 
-            variant="ghost" 
-            className="w-full"
-            onClick={onDecline}
-            disabled={isRecording || countdown !== null}
-          >
+          <Button variant="ghost" className="w-full" onClick={onDecline} disabled={isRecording || countdown !== null}>
             Decline Call
           </Button>
         </div>

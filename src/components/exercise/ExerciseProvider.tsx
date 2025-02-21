@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -34,7 +33,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       categories: ['media', 'stakeholder', 'internal', 'government', 'competitor']
     },
     aiResponses: {
-      style: 'neutral',
+      style: 'concise',
       tone: 'formal',
       includeSuggestions: true
     },

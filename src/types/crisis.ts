@@ -4,7 +4,7 @@ export interface CrisisEvent {
   type: 'event' | 'decision' | 'consequence' | 'system';
   content: string;
   timestamp: number;
-  parentId?: string;
+  parentEventId?: string;
   status: 'active' | 'resolved' | 'escalated';
   source?: string;
   severity?: 'low' | 'medium' | 'high';

@@ -14,6 +14,7 @@ import { ExerciseQuestionnaire } from '@/components/exercise/ExerciseQuestionnai
 import { ExerciseSummary } from '@/components/exercise/ExerciseSummary';
 import { ScenarioOption } from '@/types/scenario';
 import { ArrowLeft } from 'lucide-react';
+import { CrisisFlowchart } from '@/components/exercise/CrisisFlowchart';
 
 const Exercise = () => {
   const navigate = useNavigate();
@@ -567,12 +568,14 @@ const Exercise = () => {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Crisis Response Feed</CardTitle>
+                <CardTitle>Crisis Response Flow</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {renderMessages()}
-                </div>
+                <CrisisFlowchart
+                  messages={messages}
+                  currentOptions={currentStep?.options}
+                  onDecision={handleDecision}
+                />
               </CardContent>
             </Card>
 
@@ -602,18 +605,21 @@ const Exercise = () => {
                 <p className="text-muted-foreground mb-4">
                   {currentStep?.description}
                 </p>
-                <div className="space-y-2">
-                  {currentStep?.options.map((option, index) => (
-                    <Button
-                      key={index}
-                      className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
-                      variant="outline"
-                      onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
-                    >
-                      {option.text}
-                    </Button>
-                  ))}
-                </div>
+                {currentStep?.options && currentStep.options.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium mb-2">Available Actions:</h3>
+                    {currentStep.options.map((option, index) => (
+                      <Button
+                        key={index}
+                        className="w-full transition-all hover:scale-102 animate-in fade-in-50 duration-300"
+                        variant="outline"
+                        onClick={() => handleDecision(option.text, option.impact, option.nextStepId, option.consequence)}
+                      >
+                        {option.text}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

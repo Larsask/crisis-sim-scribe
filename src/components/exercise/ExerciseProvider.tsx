@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -139,9 +138,23 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
 
   const handleTimeSkip = async () => {
     setIsTimeSkipping(true);
+    
     await fastForward();
-    const updates = await generateDynamicUpdates(null, crisisMemoryManager.getCrisisState(), events);
+    
+    const updates = await generateDynamicUpdates(
+      null,
+      crisisMemoryManager.getCrisisState(),
+      events,
+      true
+    );
+
     setPendingUpdates(prev => [...prev, ...updates]);
+
+    if (shouldTriggerJournalistCall(crisisMemoryManager.getCrisisState(), events, true)) {
+      setJournalistCallState('incoming');
+      setShowJournalistCall(true);
+    }
+
     setIsTimeSkipping(false);
   };
 
@@ -216,16 +229,30 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
         const update = pendingUpdates[0];
         addEvent(update);
         setPendingUpdates(prev => prev.slice(1));
-      } else {
-        const newUpdates = await generateDynamicUpdates(null, crisisMemoryManager.getCrisisState(), events);
-        if (newUpdates.length > 0) {
-          setPendingUpdates(newUpdates);
+
+        if (update.type === 'stakeholder' && update.severity === 'high') {
+          const message = generateStakeholderMessage(
+            crisisMemoryManager.getCrisisState(),
+            events
+          );
+          if (message) {
+            addMessage({
+              id: Math.random().toString(36).substr(2, 9),
+              sender: update.content.split(':')[0],
+              content: message.content,
+              timestamp: Date.now(),
+              type: message.type,
+              urgency: message.urgency,
+              status: 'unread',
+              responseDeadline: Date.now() + 300000
+            });
+          }
         }
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(updateInterval);
-  }, [isExerciseActive, isExerciseEnded, pendingUpdates, events, addEvent]);
+  }, [isExerciseActive, isExerciseEnded, pendingUpdates, events]);
 
   const value = {
     config,

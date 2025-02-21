@@ -12,16 +12,20 @@ export const generateDynamicUpdates = async (
   const updates: CrisisEvent[] = [];
   
   if (timeSkipped) {
+    // Multiple events must occur when time is skipped
     const escalationEvents = [
       "A whistleblower has leaked internal documents to the press.",
       "Social media backlash is intensifying as the story spreads.",
       "Industry experts are publicly questioning company practices.",
       "Competitors are distancing themselves from similar AI technologies.",
-      "Employee concerns about the situation are being shared online."
+      "Employee concerns about the situation are being shared online.",
+      "Regulatory bodies are requesting immediate clarification.",
+      "Investment analysts are revising their recommendations.",
+      "Media outlets are preparing in-depth investigative reports."
     ];
 
-    // Add 1-2 escalation events when time is skipped
-    const numEvents = Math.floor(Math.random() * 2) + 1;
+    // Add 2-4 escalation events when time is skipped
+    const numEvents = Math.floor(Math.random() * 3) + 2;
     for (let i = 0; i < numEvents; i++) {
       const eventContent = escalationEvents[Math.floor(Math.random() * escalationEvents.length)];
       updates.push({
@@ -33,41 +37,69 @@ export const generateDynamicUpdates = async (
         severity: 'high'
       });
     }
-  }
 
-  // Generate stakeholder responses based on crisis state
-  if (crisisState.publicTrust < 50 || timeSkipped) {
-    updates.push({
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'stakeholder',
-      content: "Key stakeholders are demanding an emergency meeting to discuss the situation.",
-      timestamp: Date.now() + 3000,
-      status: 'active',
-      severity: 'high'
+    // Add stakeholder reactions to time skip
+    if (crisisState.publicTrust < 70) {
+      updates.push({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'stakeholder',
+        content: "Key stakeholders are demanding an emergency meeting to discuss the situation.",
+        timestamp: Date.now() + 3000,
+        status: 'active',
+        severity: 'high'
+      });
+    }
+
+    // Add media pressure if attention is high
+    if (crisisState.mediaAttention > 60) {
+      updates.push({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'media',
+        content: "Multiple news outlets are preparing in-depth coverage of the situation.",
+        timestamp: Date.now() + 4000,
+        status: 'escalated',
+        severity: 'high'
+      });
+    }
+
+    // Internal response when morale is affected
+    if (crisisState.internalMorale < 70) {
+      updates.push({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'internal',
+        content: "Employee satisfaction metrics are declining rapidly. HR reports increasing concerns.",
+        timestamp: Date.now() + 5000,
+        status: 'active',
+        severity: 'medium'
+      });
+    }
+  } else if (decision) {
+    // Generate immediate consequences for decisions
+    const aiResponse = await aiService.generateResponse(decision, {
+      pastDecisions: pastEvents.filter(e => e.type === 'decision').map(e => e.content),
+      currentSeverity: crisisState.severity,
+      stakeholderMood: crisisState.publicTrust < 50 ? 'negative' : 'neutral'
     });
-  }
 
-  // Add media pressure if attention is high
-  if (crisisState.mediaAttention > 70 || timeSkipped) {
     updates.push({
       id: Math.random().toString(36).substr(2, 9),
-      type: 'media',
-      content: "Multiple news outlets are preparing in-depth coverage of the situation.",
-      timestamp: Date.now() + 4000,
-      status: 'escalated',
-      severity: 'high'
+      type: 'consequence',
+      content: aiResponse.mainResponse,
+      timestamp: Date.now() + 1000,
+      status: crisisState.severity === 'high' ? 'escalated' : 'active',
+      severity: crisisState.severity
     });
-  }
 
-  // Internal response to declining morale
-  if (crisisState.internalMorale < 60 || timeSkipped) {
-    updates.push({
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'internal',
-      content: "Employee satisfaction metrics are declining. HR reports increasing concerns.",
-      timestamp: Date.now() + 5000,
-      status: 'active',
-      severity: 'medium'
+    // Add stakeholder reactions
+    aiResponse.stakeholderReactions.forEach((reaction, index) => {
+      updates.push({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'stakeholder',
+        content: `${reaction.group}: ${reaction.reaction}`,
+        timestamp: Date.now() + (2000 + index * 1000),
+        status: reaction.urgency === 'critical' ? 'escalated' : 'active',
+        severity: reaction.urgency === 'critical' ? 'high' : 'medium'
+      });
     });
   }
 

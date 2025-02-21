@@ -9,7 +9,7 @@ import { AIJournalist } from '@/components/exercise/AIJournalist';
 import { PublicStatement } from '@/components/exercise/PublicStatement';
 import { ScenarioInbrief } from '@/components/exercise/ScenarioInbrief';
 import { FollowUpPrompt } from '@/components/exercise/FollowUpPrompt';
-import { dataBreachScenario } from '@/data/scenarios/cyberAttackScenario';
+import { scenarios } from '@/data/scenarios';
 import { formatDistanceToNow } from 'date-fns';
 
 const Exercise = () => {
@@ -51,15 +51,37 @@ const Exercise = () => {
     timestamp: number;
   }>>([]);
 
-  const currentScenario = dataBreachScenario;
-  const currentStep = currentScenario.steps.find(step => step.id === currentStepId);
+  // Get the correct scenario based on the selected scenarioId
+  const getCurrentScenario = () => {
+    if (!scenarioId) return null;
+    // Convert scenarioId to match the scenario object keys (e.g., 'reputation-1' to 'executiveMisconductScenario')
+    const scenarioMap: { [key: string]: string } = {
+      'reputation-1': 'executiveMisconductScenario',
+      'cyber-1': 'ransomwareScenario',
+      'misinfo-1': 'viralDisinfoScenario',
+      'ai-1': 'aiHiringScenario',
+      'hybrid-1': 'supplyChainScenario',
+      'realtime-1': 'liveEventScenario',
+      'insider-1': 'engineerThreatScenario',
+      // Add mappings for all other scenarios
+    };
+    
+    const scenarioKey = scenarioMap[scenarioId];
+    return scenarioKey ? scenarios[scenarioKey as keyof typeof scenarios] : null;
+  };
+
+  const currentScenario = getCurrentScenario();
+  const currentStep = currentScenario?.steps.find(step => step.id === currentStepId);
 
   useEffect(() => {
     if (!category || !scenarioId || !complexity || !duration) {
       navigate('/scenario-setup');
       return;
     }
-  }, [category, scenarioId, complexity, duration, navigate]);
+
+    // Log the current scenario for debugging
+    console.log('Current Scenario:', currentScenario);
+  }, [category, scenarioId, complexity, duration, navigate, currentScenario]);
 
   useEffect(() => {
     if (!isExerciseActive) {
@@ -189,6 +211,11 @@ const Exercise = () => {
       "Your statement is now your official position and will be referenced by media."
     );
   };
+
+  if (!currentScenario) {
+    navigate('/scenario-setup');
+    return null;
+  }
 
   if (showInbrief) {
     return (

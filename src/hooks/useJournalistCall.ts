@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
 
 type JournalistCallState = 'inactive' | 'incoming' | 'active' | 'declined' | 'failed' | 'text-mode';
@@ -17,7 +18,7 @@ export const useJournalistCall = () => {
     toast({
       title: "Response Sent",
       description: "The journalist will consider your statement for their story.",
-      duration: null, // Stays until dismissed
+      duration: null // Stays until dismissed
     });
 
     if (journalistCallState === 'failed' || journalistCallState === 'text-mode') {
@@ -38,10 +39,10 @@ export const useJournalistCall = () => {
       description: "The journalist may publish without your input. Would you like to send a text statement instead?",
       duration: null,
       action: (
-        <Button onClick={() => setJournalistCallState('text-mode')}>
+        <Button variant="secondary" onClick={() => setJournalistCallState('text-mode')}>
           Send Text
         </Button>
-      ),
+      )
     });
   };
 
@@ -50,7 +51,7 @@ export const useJournalistCall = () => {
     toast({
       title: "Call Failed",
       description: "Switching to text mode for this conversation.",
-      duration: 5000,
+      duration: 5000
     });
   };
 

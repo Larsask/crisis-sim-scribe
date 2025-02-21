@@ -93,6 +93,98 @@ const Exercise = () => {
     return "While your response has been noted, stakeholders expect more specific actions to address their concerns.";
   };
 
+  const generateContextAwareFollowUp = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): StakeholderMessage => {
+    const followUpTypes = [
+      'decision',
+      'summary',
+      'stakeholder',
+      'update'
+    ];
+    
+    const followUpType = followUpTypes[Math.floor(Math.random() * followUpTypes.length)];
+    
+    let followUp: StakeholderMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      sender: '',
+      content: '',
+      timestamp: Date.now(),
+      urgency: 'normal',
+      type: 'text',
+      status: 'unread',
+      responseDeadline: Date.now() + 300000
+    };
+
+    if (text.toLowerCase().includes('investigation')) {
+      switch(followUpType) {
+        case 'decision':
+          followUp = {
+            ...followUp,
+            sender: "Investigation Team",
+            content: "Initial findings raise concerns about systemic issues. Should we expand the scope of our investigation?",
+            urgency: 'urgent',
+            responseOptions: [
+              { text: "Yes, expand the investigation scope", impact: 'positive' },
+              { text: "Maintain current scope but accelerate timeline", impact: 'neutral' },
+              { text: "Complete current phase before deciding", impact: 'negative' }
+            ]
+          };
+          break;
+        case 'summary':
+          followUp = {
+            ...followUp,
+            sender: "Legal Department",
+            content: "Document review reveals potential compliance gaps. Immediate attention required.",
+            urgency: 'critical'
+          };
+          break;
+        default:
+          followUp = {
+            ...followUp,
+            sender: "Strategic Planning",
+            content: "Teams are compiling findings. How should we proceed with stakeholder communication?",
+            urgency: 'urgent'
+          };
+      }
+    } else if (text.toLowerCase().includes('statement')) {
+      switch(followUpType) {
+        case 'stakeholder':
+          followUp = {
+            ...followUp,
+            sender: "Media Relations",
+            content: "Press is requesting more details about our statement. How should we respond?",
+            urgency: 'critical',
+            type: 'email'
+          };
+          break;
+        case 'update':
+          followUp = {
+            ...followUp,
+            sender: "Communications Team",
+            content: "Draft statement ready for review. Key stakeholders suggest additional context needed.",
+            urgency: 'urgent'
+          };
+          break;
+        default:
+          followUp = {
+            ...followUp,
+            sender: "PR Team",
+            content: "Social media response to our statement is mixed. Should we issue a clarification?",
+            urgency: 'urgent'
+          };
+      }
+    } else {
+      followUp = {
+        ...followUp,
+        sender: "Crisis Management Team",
+        content: "New developments require immediate attention. How should we adjust our strategy?",
+        urgency: 'urgent',
+        type: 'email'
+      };
+    }
+
+    return followUp;
+  };
+
   const generateFollowUpEvent = (text: string, responseType: 'appropriate' | 'inappropriate' | 'neutral'): CrisisEvent => {
     const baseEvent: CrisisEvent = {
       id: Math.random().toString(36).substr(2, 9),
@@ -174,6 +266,9 @@ const Exercise = () => {
     if (Math.random() > 0.7) {
       setShowJournalistCall(true);
     }
+
+    const followUp = generateContextAwareFollowUp(text, responseType);
+    setMessages(prev => [...prev, followUp]);
 
     toast({
       title: responseType === 'inappropriate' ? "Warning" : "Decision Recorded",

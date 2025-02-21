@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useRef } from 'react';
-import { X, MessageCircle, Clock, Mail, Phone } from 'lucide-react';
+import { X, MessageCircle, Clock, Mail, Phone, AlertTriangle, Info } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +38,9 @@ export const StakeholderMessages = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -105,6 +107,23 @@ export const StakeholderMessages = ({
     }
   };
 
+  const getQuickResponses = (message: Message) => {
+    if (message.sender === "Crisis Management Team") {
+      return [
+        { text: "We are aware. Stay the course.", impact: 'positive' },
+        { text: "Re-evaluate the approach.", impact: 'neutral' },
+        { text: "What specifically is the concern?", impact: 'neutral' }
+      ];
+    } else if (message.sender === "Press Office") {
+      return [
+        { text: "Prepare a statement.", impact: 'positive' },
+        { text: "Monitor the situation.", impact: 'neutral' },
+        { text: "Schedule a press briefing.", impact: 'positive' }
+      ];
+    }
+    return message.responseOptions || [];
+  };
+
   const formatTimeLeft = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -114,7 +133,13 @@ export const StakeholderMessages = ({
   return (
     <div className="fixed bottom-4 right-4 space-y-4 max-w-sm z-50 max-h-[80vh] overflow-y-auto">
       {messages.map((message) => (
-        <Card key={message.id} className="p-4 animate-slide-in">
+        <Card 
+          key={message.id} 
+          className={`p-4 animate-in slide-in-from-right-2 duration-300 ${
+            message.urgency === 'critical' ? 'border-red-500' :
+            message.urgency === 'urgent' ? 'border-yellow-500' : ''
+          }`}
+        >
           <div className="flex justify-between items-start mb-2">
             <div className="flex items-center gap-2">
               {getMessageIcon(message.type, message.urgency)}
@@ -148,24 +173,22 @@ export const StakeholderMessages = ({
           )}
 
           <div className="space-y-2">
-            {message.responseOptions && (
-              <div className="space-y-1 mb-2">
-                {message.responseOptions.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant={option.impact === 'positive' ? 'default' : option.impact === 'negative' ? 'destructive' : 'outline'}
-                    size="sm"
-                    className="w-full text-left justify-start"
-                    onClick={() => {
-                      cancelDismissTimer(message.id);
-                      onRespond(message.id, option.text);
-                    }}
-                  >
-                    {option.text}
-                  </Button>
-                ))}
-              </div>
-            )}
+            <div className="space-y-1 mb-2">
+              {getQuickResponses(message).map((option, index) => (
+                <Button
+                  key={index}
+                  variant={option.impact === 'positive' ? 'default' : option.impact === 'negative' ? 'destructive' : 'outline'}
+                  size="sm"
+                  className="w-full text-left justify-start"
+                  onClick={() => {
+                    cancelDismissTimer(message.id);
+                    onRespond(message.id, option.text);
+                  }}
+                >
+                  {option.text}
+                </Button>
+              ))}
+            </div>
             
             <Textarea
               value={responses[message.id] || ''}

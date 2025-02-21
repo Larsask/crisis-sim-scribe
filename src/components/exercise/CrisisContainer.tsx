@@ -16,8 +16,15 @@ export const CrisisContainer = () => {
     currentStepId,
     isTimeSkipping,
     availableOptions,
+    timeRemaining,
+    scenarioBrief,
+    showJournalistCall,
     onDecision,
-    onTimeSkip
+    onTimeSkip,
+    onStakeholderResponse,
+    onMessageDismiss,
+    onJournalistResponse,
+    setShowJournalistCall
   } = useExerciseContext();
 
   return (
@@ -54,14 +61,14 @@ export const CrisisContainer = () => {
 
         <StakeholderMessages
           messages={messages}
-          onRespond={handleStakeholderResponse}
-          onDismiss={handleMessageDismiss}
+          onRespond={onStakeholderResponse}
+          onDismiss={onMessageDismiss}
         />
 
         {showJournalistCall && (
           <JournalistCall
             onClose={() => setShowJournalistCall(false)}
-            onResponse={handleJournalistResponse}
+            onResponse={onJournalistResponse}
           />
         )}
       </div>

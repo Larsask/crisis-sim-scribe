@@ -1,6 +1,6 @@
 
 import { createContext, useContext } from 'react';
-import { CrisisEvent, StakeholderMessage, DecisionOption } from '@/types/crisis';
+import { CrisisEvent, StakeholderMessage, DecisionOption, ScenarioBrief } from '@/types/crisis';
 import { TimeBasedEvent, AIResponse, FollowUpMessage } from '@/types/crisis-enhanced';
 
 interface ExerciseContextType {
@@ -12,9 +12,16 @@ interface ExerciseContextType {
   timeBasedEvents: TimeBasedEvent[];
   followUpMessage: FollowUpMessage | null;
   aiResponse: AIResponse | null;
+  timeRemaining: number;
+  scenarioBrief: ScenarioBrief;
+  showJournalistCall: boolean;
   onDecision: (text: string, isCustom: boolean) => void;
   onTimeSkip: () => void;
   onFollowUpResponse: (response: string) => void;
+  onStakeholderResponse: (messageId: string, response: string) => void;
+  onMessageDismiss: (messageId: string) => void;
+  onJournalistResponse: (response: string) => void;
+  setShowJournalistCall: (show: boolean) => void;
 }
 
 export const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);

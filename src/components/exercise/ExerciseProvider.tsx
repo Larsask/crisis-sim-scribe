@@ -60,6 +60,20 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     initialSituation: "Please select a valid scenario"
   };
 
+  const generateFollowUpMessage = (aiResponse: AIResponse): FollowUpMessage => {
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'decision_recap',
+      title: "Crisis Update",
+      content: aiResponse.mainResponse,
+      options: aiResponse.suggestedActions.map(action => ({
+        text: action.text,
+        consequence: action.consequence
+      })),
+      urgency: 'normal'
+    };
+  };
+
   const evaluateResponse = (text: string): 'appropriate' | 'inappropriate' | 'neutral' => {
     const inappropriateKeywords = ['cat', 'party', 'ignore', 'hide', 'lie', 'delay', 'pizza'];
     const appropriateKeywords = ['investigate', 'secure', 'protect', 'inform', 'assess', 'mitigate'];
@@ -217,14 +231,12 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       content: text
     });
 
-    // Generate AI response
     const aiResponse = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: responseType === 'inappropriate' ? 'high' : 'medium',
       stakeholderMood: responseType === 'inappropriate' ? 'negative' : 'neutral'
     });
 
-    // Create new events based on AI response
     const newEvents: CrisisEvent[] = [
       {
         id: Math.random().toString(36).substr(2, 9),
@@ -247,18 +259,15 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     setEvents(prev => [...prev, ...newEvents]);
     generateNewOptions(text, responseType);
 
-    // Update follow-up message
     const followUp = generateFollowUpMessage(aiResponse);
     setFollowUpMessage(followUp);
 
-    // Handle inappropriate responses
     if (responseType === 'inappropriate') {
       setInappropriateResponses(prev => [...prev, text]);
       const stakeholderReaction = generateStakeholderReaction(text, 'inappropriate');
       setMessages(prev => [...prev, stakeholderReaction]);
     }
 
-    // Chance for journalist call
     if (Math.random() > 0.7) {
       setShowJournalistCall(true);
     }
@@ -448,15 +457,6 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     handleDecision(response, true);
   };
 
-  const generateFollowUpMessage = (aiResponse: AIResponse): FollowUpMessage => {
-    return {
-      id: Math.random().toString(36).substr(2, 9),
-      content: aiResponse.followUpQuestion,
-      timestamp: Date.now(),
-      type: 'text'
-    };
-  };
-
   const handleFollowUpResponse = (response: string) => {
     handleDecision(response, true);
     setFollowUpMessage(null);
@@ -485,9 +485,16 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     timeBasedEvents: crisisTimelineService.getDueEvents(Date.now()),
     followUpMessage,
     aiResponse,
+    timeRemaining,
+    scenarioBrief,
+    showJournalistCall,
     onDecision: handleDecision,
     onTimeSkip: handleTimeSkip,
-    onFollowUpResponse: handleFollowUpResponse
+    onFollowUpResponse: handleFollowUpResponse,
+    onStakeholderResponse: handleStakeholderResponse,
+    onMessageDismiss: handleMessageDismiss,
+    onJournalistResponse: handleJournalistResponse,
+    setShowJournalistCall
   };
 
   return (

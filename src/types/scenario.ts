@@ -20,6 +20,7 @@ export interface ScenarioOption {
     type: 'text' | 'phone' | 'email' | 'time';
     validation?: string;
   };
+  groupId?: string; // Add this line to support message grouping
 }
 
 export interface ScenarioStep {

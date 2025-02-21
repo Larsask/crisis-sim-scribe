@@ -26,11 +26,10 @@ export const CurrentSituation = ({
   const [customResponse, setCustomResponse] = useState('');
   const [showBrief, setShowBrief] = useState(true);
 
-  useEffect(() => {
-    // Hide brief after 30 seconds
-    const timer = setTimeout(() => setShowBrief(false), 30000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Changed from useEffect to manual dismissal
+  const handleDismissBrief = () => {
+    setShowBrief(false);
+  };
 
   const handleCustomResponse = () => {
     if (customResponse.trim()) {
@@ -43,15 +42,26 @@ export const CurrentSituation = ({
     <Card className="p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-semibold text-lg">Current Situation</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onTimeSkip}
-          disabled={isTimeSkipping}
-        >
-          <Clock className="mr-2 h-4 w-4" />
-          Skip 5 Minutes
-        </Button>
+        <div className="flex gap-2">
+          {showBrief && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDismissBrief}
+            >
+              Dismiss Brief
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onTimeSkip}
+            disabled={isTimeSkipping}
+          >
+            <Clock className="mr-2 h-4 w-4" />
+            Skip 5 Minutes
+          </Button>
+        </div>
       </div>
 
       {isTimeSkipping && (

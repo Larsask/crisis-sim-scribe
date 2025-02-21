@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -35,25 +34,28 @@ const Exercise = () => {
     fastForward,
   } = useScenarioStore();
 
-  // Get scenario brief from the scenarios data
-  const scenarioBrief: ScenarioBrief = {
-    title: "Data Breach Crisis",
-    description: "A major data breach has been detected in your organization's systems. Customer data may have been compromised.",
-    stakeholders: [
-      "IT Security Team",
-      "Public Relations",
-      "Legal Department",
-      "Customer Support",
-      "Executive Leadership"
-    ],
-    objectives: [
-      "Contain the data breach",
-      "Notify affected customers",
-      "Manage public relations",
-      "Ensure legal compliance",
-      "Prevent future breaches"
-    ],
-    initialSituation: "Initial analysis suggests that customer payment information and personal data may have been exposed. The breach was detected 30 minutes ago, and stakeholders are demanding immediate action."
+  const getScenario = () => {
+    const scenarioKey = Object.keys(scenarios).find(key => 
+      scenarios[key].id === scenarioId && 
+      scenarios[key].category === category
+    );
+    return scenarioKey ? scenarios[scenarioKey] : null;
+  };
+
+  const currentScenario = getScenario();
+
+  const scenarioBrief: ScenarioBrief = currentScenario ? {
+    title: currentScenario.inbrief.title,
+    description: currentScenario.inbrief.summary,
+    stakeholders: currentScenario.inbrief.stakeholders,
+    objectives: currentScenario.inbrief.objectives,
+    initialSituation: currentScenario.inbrief.initialSituation
+  } : {
+    title: "Scenario Not Found",
+    description: "Error loading scenario",
+    stakeholders: [],
+    objectives: [],
+    initialSituation: "Please select a valid scenario"
   };
 
   useEffect(() => {
@@ -61,10 +63,20 @@ const Exercise = () => {
       navigate('/scenario-setup');
       return;
     }
-  }, [category, scenarioId, complexity, duration, navigate]);
+
+    if (!currentScenario) {
+      toast({
+        title: "Error",
+        description: "Invalid scenario selected",
+        variant: "destructive"
+      });
+      navigate('/scenario-setup');
+      return;
+    }
+  }, [category, scenarioId, complexity, duration, navigate, currentScenario]);
 
   useEffect(() => {
-    if (!isExerciseActive) {
+    if (!isExerciseActive && currentScenario) {
       startExercise();
       const durationInMs = {
         '30min': 30 * 60 * 1000,
@@ -73,29 +85,19 @@ const Exercise = () => {
       }[duration!];
       updateTimeRemaining(durationInMs);
 
-      // Initialize with first set of options
-      setAvailableOptions([
-        {
-          id: '1',
-          text: "Notify all affected customers immediately",
-          impact: 'high',
-          consequence: "Shows transparency but may cause panic"
-        },
-        {
-          id: '2',
-          text: "Conduct thorough investigation before any announcements",
-          impact: 'medium',
-          consequence: "Gains more information but delays response"
-        },
-        {
-          id: '3',
-          text: "Issue preliminary statement acknowledging potential breach",
-          impact: 'high',
-          consequence: "Balanced approach but may raise questions"
-        }
-      ]);
+      const initialStep = currentScenario.steps.find(step => step.id === 'start');
+      if (initialStep) {
+        setAvailableOptions(
+          initialStep.options.map(option => ({
+            id: Math.random().toString(36).substr(2, 9),
+            text: option.text,
+            impact: option.impact,
+            consequence: option.consequence
+          }))
+        );
+      }
     }
-  }, [isExerciseActive, startExercise, duration, updateTimeRemaining]);
+  }, [isExerciseActive, startExercise, duration, updateTimeRemaining, currentScenario]);
 
   const handleDecision = (text: string, isCustom: boolean) => {
     const newEvent: CrisisEvent = {
@@ -108,7 +110,6 @@ const Exercise = () => {
 
     setEvents(prev => [...prev, newEvent]);
 
-    // Generate consequence based on decision
     const consequence: CrisisEvent = {
       id: Math.random().toString(36).substr(2, 9),
       type: 'consequence',
@@ -122,7 +123,6 @@ const Exercise = () => {
 
     setEvents(prev => [...prev, consequence]);
 
-    // Update available options based on decision
     generateNewOptions(text);
 
     toast({
@@ -132,7 +132,6 @@ const Exercise = () => {
   };
 
   const generateNewOptions = (lastDecision: string) => {
-    // Generate new context-appropriate options based on the last decision
     const newOptions: DecisionOption[] = [
       {
         id: Math.random().toString(36).substr(2, 9),
@@ -161,7 +160,6 @@ const Exercise = () => {
     setIsTimeSkipping(true);
     await fastForward();
     
-    // Generate new events based on time skip
     const newEvents: CrisisEvent[] = [
       {
         id: Math.random().toString(36).substr(2, 9),
@@ -181,7 +179,6 @@ const Exercise = () => {
     
     setEvents(prev => [...prev, ...newEvents]);
     
-    // Add new stakeholder message
     const newMessage: StakeholderMessage = {
       id: Math.random().toString(36).substr(2, 9),
       sender: "Legal Department",
@@ -235,7 +232,6 @@ const Exercise = () => {
           }}
           onDismiss={(messageId) => {
             setMessages(prev => prev.filter(m => m.id !== messageId));
-            // Add negative consequence for ignoring stakeholder
             setEvents(prev => [...prev, {
               id: Math.random().toString(36).substr(2, 9),
               type: 'system',

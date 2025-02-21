@@ -35,7 +35,7 @@ export const aiService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',  // Using GPT-3.5 as requested
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -47,20 +47,21 @@ export const aiService = {
               - Response tone: ${context.tone || 'formal'}
               - Past decisions: ${context.pastDecisions.join(', ')}
               
-              Format the response as:
-              1. Main analysis (2-3 sentences)
-              2. List immediate consequences (start each with -)
-              3. Key stakeholder reactions (start each with -)
-              4. Suggested next actions (start each with -)`
+              Generate realistic and challenging crisis scenarios with:
+              1. Immediate consequences
+              2. Stakeholder reactions
+              3. Media responses
+              4. Internal impacts
+              5. Suggested actions that lead to meaningful choices`
             },
             {
               role: 'user',
               content: `Decision made: "${decision}"
               
-              Analyze this decision's impact considering all past context and current situation.`
+              Generate a detailed crisis response including multiple events, stakeholder reactions, and new challenges.`
             }
           ],
-          temperature: 0.7,
+          temperature: 0.8,
           max_tokens: 1000
         })
       });
@@ -83,11 +84,7 @@ export const aiService = {
           group: line.includes(':') ? line.split(':')[0].substring(2) : "Stakeholder",
           reaction: line.includes(':') ? line.split(':')[1].trim() : line.substring(2),
           urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
-        })) || [{
-          group: "Media",
-          reaction: "Analyzing the situation",
-          urgency: context.currentSeverity as 'normal' | 'urgent' | 'critical'
-        }];
+        })) || [];
 
       const suggestedActions = sections[3]?.split('\n')
         .filter(line => line.startsWith('-'))
@@ -95,22 +92,18 @@ export const aiService = {
           text: line.substring(2),
           impact: context.currentSeverity as 'low' | 'medium' | 'high',
           consequence: "Could affect stakeholder trust and media coverage"
-        })) || [{
-          text: "Monitor situation",
-          impact: "medium",
-          consequence: "Allows time for proper assessment"
-        }];
+        })) || [];
 
       return {
         mainResponse,
         consequences,
-        stakeholderReactions: stakeholderReactions.slice(0, 3), // Limit to 3 reactions
+        stakeholderReactions: stakeholderReactions.slice(0, 3),
         suggestedActions
       };
     } catch (error) {
       console.error('Error generating AI response:', error);
       return {
-        mainResponse: "Your decision has been acknowledged. Stakeholders are reviewing the situation.",
+        mainResponse: "Your decision has been acknowledged. Analyzing implications...",
         consequences: ["Impact being assessed"],
         stakeholderReactions: [
           {
@@ -146,27 +139,28 @@ export const aiService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',  // Using GPT-3.5 as requested
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
               content: `You are an experienced journalist writing about an ongoing crisis.
-              Write a concise, factual article with:
-              - A clear lead paragraph
-              - Relevant background context
-              - At least one quote from a stakeholder
-              - Impact assessment
-              Maintain a ${tone} tone throughout.`
+              Generate realistic and impactful news coverage with:
+              - Breaking news style lead paragraph
+              - Critical analysis of the situation
+              - Stakeholder quotes (both supportive and critical)
+              - Industry expert perspectives
+              - Potential implications and next developments
+              Maintain a ${tone} tone while creating pressure and urgency.`
             },
             {
               role: 'user',
               content: `Write a news article with the headline: "${headline}"
               Context: ${context}
-              Include realistic quotes and maintain journalistic standards.`
+              Include multiple perspectives and maintain journalistic standards.`
             }
           ],
-          temperature: 0.7,
-          max_tokens: 500
+          temperature: 0.8,
+          max_tokens: 800
         })
       });
 
@@ -184,7 +178,61 @@ export const aiService = {
     pastEvents: any[];
   }): Promise<DecisionOption[]> => {
     try {
-      const options: DecisionOption[] = [
+      const { data: secretData, error: secretError } = await supabase
+        .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
+
+      if (secretError || !secretData) {
+        throw new Error('Failed to retrieve API key');
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${secretData}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `Generate new strategic options for a crisis situation.
+              Consider:
+              - Recent decision: ${decision}
+              - Crisis severity: ${crisisState.severity}
+              - Public trust: ${crisisState.publicTrust}%
+              - Media attention: ${crisisState.mediaAttention}%
+              
+              Create 3-4 distinct options that:
+              - Respond to the current situation
+              - Have meaningful consequences
+              - Create interesting dilemmas
+              - Lead to further developments`
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 500
+        })
+      });
+
+      const data = await response.json();
+      const suggestions = data.choices[0].message.content
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => {
+          const [text, consequence] = line.split('|').map(s => s.trim());
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            text: text || "Monitor the situation",
+            impact: crisisState.severity,
+            consequence: consequence || "Impact being assessed"
+          };
+        });
+
+      return suggestions;
+    } catch (error) {
+      console.error('Error generating options:', error);
+      return [
         {
           id: Math.random().toString(36).substr(2, 9),
           text: "Issue a formal statement addressing concerns",
@@ -198,18 +246,90 @@ export const aiService = {
           consequence: "Direct engagement could boost confidence"
         }
       ];
-      return options;
-    } catch (error) {
-      console.error('Error generating options:', error);
-      return [];
     }
   },
 
   generateMediaReaction: async (decision: string, crisisState: any): Promise<string> => {
-    return `Media outlets are reporting on the recent decision to ${decision.toLowerCase()}. Expert analysts are reviewing potential implications.`;
+    try {
+      const { data: secretData, error: secretError } = await supabase
+        .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
+
+      if (secretError || !secretData) {
+        throw new Error('Failed to retrieve API key');
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${secretData}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `Generate realistic media reactions to crisis management decisions.
+              Consider the current state:
+              - Crisis severity: ${crisisState.severity}
+              - Public trust: ${crisisState.publicTrust}%
+              - Media attention: ${crisisState.mediaAttention}%`
+            },
+            {
+              role: 'user',
+              content: `Generate media reaction to the decision: "${decision}"`
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 200
+        })
+      });
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('Error generating media reaction:', error);
+      return `Media outlets are analyzing the decision to ${decision.toLowerCase()}. Expert opinions vary.`;
+    }
   },
 
   generateStakeholderUpdate: async (crisisState: any, pastEvents: any[]): Promise<string> => {
-    return `Key stakeholders are monitoring the situation closely and requesting regular updates on crisis management efforts.`;
+    try {
+      const { data: secretData, error: secretError } = await supabase
+        .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
+
+      if (secretError || !secretData) {
+        throw new Error('Failed to retrieve API key');
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${secretData}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `Generate realistic stakeholder updates based on crisis progression.
+              Consider:
+              - Crisis severity: ${crisisState.severity}
+              - Public trust: ${crisisState.publicTrust}%
+              - Recent events: ${JSON.stringify(pastEvents.slice(-3))}`
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 200
+        })
+      });
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('Error generating stakeholder update:', error);
+      return `Key stakeholders are monitoring the situation closely and requesting regular updates.`;
+    }
   }
 };

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
+import { ToastAction } from '@/components/ui/toast';
 
 type JournalistCallState = 'inactive' | 'incoming' | 'active' | 'declined' | 'failed' | 'text-mode';
 
@@ -36,11 +37,11 @@ export const useJournalistCall = () => {
       title: "Call Declined",
       description: "The journalist may publish without your input. Would you like to send a text statement instead?",
       duration: null,
-      action: React.createElement(Button, {
-        variant: "secondary",
-        onClick: () => setJournalistCallState('text-mode'),
-        children: "Send Text"
-      })
+      action: (
+        <ToastAction altText="Send text statement" onClick={() => setJournalistCallState('text-mode')}>
+          Send Text
+        </ToastAction>
+      )
     });
   };
 

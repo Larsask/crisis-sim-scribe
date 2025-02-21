@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { ExerciseContext } from './ExerciseContext';
 import { useScenarioStore } from '@/store/scenarioStore';
@@ -12,7 +13,20 @@ import { scenarios } from '@/data/scenarios';
 import { useNavigate } from 'react-router-dom';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
 import { DecisionOption, CrisisEvent } from '@/types/crisis';
-import { generateDynamicUpdates } from '@/utils/scenario-generator';
+import { generateDynamicUpdates, shouldTriggerJournalistCall } from '@/utils/scenario-generator';
+
+const durationToMs = (duration: string): number => {
+  switch (duration) {
+    case '30min':
+      return 30 * 60 * 1000;
+    case '1hr':
+      return 60 * 60 * 1000;
+    case '2hrs':
+      return 2 * 60 * 60 * 1000;
+    default:
+      return 30 * 60 * 1000;
+  }
+};
 
 export const ExerciseProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();

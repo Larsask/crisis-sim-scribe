@@ -16,7 +16,7 @@ export const generateDynamicUpdates = async (
       id: Math.random().toString(36).substr(2, 9),
       type: 'event',
       content: mediaReaction,
-      timestamp: Date.now() + 2000, // Slight delay for realism
+      timestamp: Date.now() + 2000,
       status: 'active',
       severity: crisisState.severity
     });
@@ -50,7 +50,7 @@ export const generateDynamicUpdates = async (
   return updates;
 };
 
-const shouldTriggerJournalistCall = (crisisState: any, events: CrisisEvent[]): boolean => {
+export const shouldTriggerJournalistCall = (crisisState: any, events: CrisisEvent[]): boolean => {
   const hasHighSeverityEvents = events.some(e => e.severity === 'high');
   const hasRecentDecisions = events
     .filter(e => e.type === 'decision')

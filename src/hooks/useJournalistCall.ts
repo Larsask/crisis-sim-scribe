@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { crisisMemoryManager } from '@/utils/crisis-memory';
 
 export const useJournalistCall = () => {
   const [showJournalistCall, setShowJournalistCall] = useState(false);

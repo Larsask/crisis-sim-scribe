@@ -8,10 +8,11 @@ import { useJournalistCall } from '@/hooks/useJournalistCall';
 import { aiService } from '@/services/ai-service';
 import { crisisTimelineService } from '@/services/crisis-timeline';
 import { useToast } from "@/components/ui/use-toast";
-import { FollowUpMessage, ExerciseConfig } from '@/types/crisis-enhanced';
+import { FollowUpMessage, ExerciseConfig, AIResponse } from '@/types/crisis-enhanced';
 import { scenarios } from '@/data/scenarios';
 import { useNavigate } from 'react-router-dom';
 import { crisisMemoryManager } from '@/utils/crisis-memory';
+import { DecisionOption } from '@/types/crisis';
 
 export const ExerciseProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
   const [isTimeSkipping, setIsTimeSkipping] = useState(false);
   const [availableOptions, setAvailableOptions] = useState<DecisionOption[]>([]);
   const [followUpMessage, setFollowUpMessage] = useState<FollowUpMessage | null>(null);
+  const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   const [config, setConfig] = useState<ExerciseConfig>({
     timeBasedEvents: {
       frequency: 'medium',
@@ -79,7 +81,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     const crisisState = crisisMemoryManager.getCrisisState();
     const newEvents = handleDecisionEvent(text, crisisState.severity);
     
-    const aiResponse = await aiService.generateResponse(text, {
+    const response = await aiService.generateResponse(text, {
       pastDecisions: events.filter(e => e.type === 'decision').map(e => e.content),
       currentSeverity: crisisState.severity,
       stakeholderMood: crisisState.publicTrust < 50 ? 'negative' : 'neutral',
@@ -87,6 +89,8 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       tone: config.aiResponses.tone,
       includeSuggestions: config.aiResponses.includeSuggestions
     });
+
+    setAiResponse(response);
 
     if (Math.random() > 0.7) {
       setShowJournalistCall(true);
@@ -150,6 +154,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     availableOptions,
     timeBasedEvents: crisisTimelineService.getDueEvents(Date.now()),
     followUpMessage,
+    aiResponse,
     timeRemaining,
     scenarioBrief,
     showJournalistCall,

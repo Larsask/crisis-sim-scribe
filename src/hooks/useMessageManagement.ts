@@ -34,7 +34,7 @@ export const useMessageManagement = () => {
         urgency: 'critical',
         type: 'email',
         status: 'unread',
-        responseDeadline: Date.now() + 300000
+        responseDeadline: Date.now() + 300000 // 5 minutes
       };
       setTimeout(() => addMessage(followUp), 5000);
     }

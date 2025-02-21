@@ -15,25 +15,26 @@ export const useEventManagement = () => {
   };
 
   const handleDecisionEvent = (text: string, severity: 'low' | 'medium' | 'high') => {
-    const newEvents: CrisisEvent[] = [
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'decision',
-        content: text,
-        timestamp: Date.now(),
-        status: severity === 'high' ? 'escalated' : 'active',
-        severity
-      }
-    ];
+    const newDecisionEvent: CrisisEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'decision',
+      content: text,
+      timestamp: Date.now(),
+      status: severity === 'high' ? 'escalated' : 'active',
+      severity
+    };
 
-    if (crisisMemoryManager.shouldEscalate(newEvents[0])) {
+    const newEvents: CrisisEvent[] = [newDecisionEvent];
+
+    // Check if the decision should trigger an escalation
+    if (crisisMemoryManager.shouldEscalate(newDecisionEvent)) {
       const crisisState = crisisMemoryManager.getCrisisState();
       newEvents.push({
         id: Math.random().toString(36).substr(2, 9),
         type: 'consequence',
         content: `Situation has escalated. Public trust: ${crisisState.publicTrust}%`,
         timestamp: Date.now() + 1000,
-        parentEventId: newEvents[0].id,
+        parentEventId: newDecisionEvent.id,
         status: 'escalated',
         severity: 'high'
       });

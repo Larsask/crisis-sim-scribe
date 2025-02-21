@@ -62,7 +62,6 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
 
   const generateFollowUpMessage = (aiResponse: AIResponse): FollowUpMessage => {
     return {
-      id: Math.random().toString(36).substr(2, 9),
       type: 'decision_recap',
       title: "Crisis Update",
       content: aiResponse.mainResponse,

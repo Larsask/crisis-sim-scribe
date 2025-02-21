@@ -36,6 +36,7 @@ export const StakeholderMessages = ({
   const [timeLeft, setTimeLeft] = useState<{[key: string]: number}>({});
   const [dismissTimers, setDismissTimers] = useState<{[key: string]: NodeJS.Timeout}>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [unreadMessages, setUnreadMessages] = useState<Set<string>>(new Set());
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -44,8 +45,16 @@ export const StakeholderMessages = ({
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Mark new messages as unread
+    const newMessageIds = messages
+      .filter(msg => !unreadMessages.has(msg.id))
+      .map(msg => msg.id);
+    
+    if (newMessageIds.length > 0) {
+      setUnreadMessages(prev => new Set([...prev, ...newMessageIds]));
+      scrollToBottom();
+    }
+  }, [messages, unreadMessages]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -66,15 +75,33 @@ export const StakeholderMessages = ({
   }, [messages]);
 
   const handleDismiss = (messageId: string) => {
-    // Start a 2-minute timer before triggering the "ignored" consequence
     const timer = setTimeout(() => {
       onDismiss(messageId);
-    }, 120000); // 2 minutes
+    }, 120000);
 
     setDismissTimers(prev => ({
       ...prev,
       [messageId]: timer
     }));
+    
+    // Remove from unread messages when dismissed
+    setUnreadMessages(prev => {
+      const next = new Set(prev);
+      next.delete(messageId);
+      return next;
+    });
+  };
+
+  const handleResponse = (messageId: string, response: string) => {
+    cancelDismissTimer(messageId);
+    onRespond(messageId, response);
+    
+    // Remove from unread messages when responded to
+    setUnreadMessages(prev => {
+      const next = new Set(prev);
+      next.delete(messageId);
+      return next;
+    });
   };
 
   const cancelDismissTimer = (messageId: string) => {
@@ -135,9 +162,11 @@ export const StakeholderMessages = ({
       {messages.map((message) => (
         <Card 
           key={message.id} 
-          className={`p-4 animate-in slide-in-from-right-2 duration-300 ${
-            message.urgency === 'critical' ? 'border-red-500' :
-            message.urgency === 'urgent' ? 'border-yellow-500' : ''
+          className={`p-4 transition-all duration-300 ${
+            unreadMessages.has(message.id) ? 'animate-in fade-in slide-in-from-right-5' : ''
+          } ${
+            message.urgency === 'critical' ? 'border-red-500 bg-red-50/50' :
+            message.urgency === 'urgent' ? 'border-yellow-500 bg-yellow-50/50' : ''
           }`}
         >
           <div className="flex justify-between items-start mb-2">
@@ -180,10 +209,7 @@ export const StakeholderMessages = ({
                   variant={option.impact === 'positive' ? 'default' : option.impact === 'negative' ? 'destructive' : 'outline'}
                   size="sm"
                   className="w-full text-left justify-start"
-                  onClick={() => {
-                    cancelDismissTimer(message.id);
-                    onRespond(message.id, option.text);
-                  }}
+                  onClick={() => handleResponse(message.id, option.text)}
                 >
                   {option.text}
                 </Button>
@@ -207,8 +233,7 @@ export const StakeholderMessages = ({
               className="w-full"
               onClick={() => {
                 if (responses[message.id]) {
-                  cancelDismissTimer(message.id);
-                  onRespond(message.id, responses[message.id]);
+                  handleResponse(message.id, responses[message.id]);
                   setResponses(prev => ({...prev, [message.id]: ''}));
                 }
               }}

@@ -33,7 +33,9 @@ export type Database = {
         Args: {
           secret_name: string
         }
-        Returns: string
+        Returns: {
+          value: string
+        }[]
       }
     }
     Enums: {

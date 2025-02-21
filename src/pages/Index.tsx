@@ -1,102 +1,36 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useScenarioStore, type ScenarioCategory } from '@/store/scenarioStore';
+import { useToast } from "@/components/ui/use-toast";
+import { openaiTest } from "@/services/openai-test";
 
-const CATEGORIES: Array<{
-  id: ScenarioCategory;
-  title: string;
-  description: string;
-}> = [
-  {
-    id: 'cyberattack',
-    title: 'Cyberattack Response',
-    description: 'Handle evolving cyber threats and data breaches.'
-  },
-  {
-    id: 'misinformation',
-    title: 'Misinformation Crisis',
-    description: 'Combat false information spreading about your organization.'
-  },
-  {
-    id: 'insider-threat',
-    title: 'Insider Threat',
-    description: 'Manage internal security compromises and employee-related incidents.'
-  },
-  {
-    id: 'reputation',
-    title: 'Reputation Management',
-    description: 'Navigate public relations challenges and brand threats.'
-  },
-  {
-    id: 'hybrid',
-    title: 'Hybrid Threats',
-    description: 'Handle complex scenarios involving multiple crisis types.'
-  },
-  {
-    id: 'ai-powered',
-    title: 'AI-Related Crisis',
-    description: 'Respond to artificial intelligence and automation incidents.'
-  },
-  {
-    id: 'real-time',
-    title: 'Real-Time Events',
-    description: 'Manage developing situations with live updates.'
-  }
-];
+export default function Index() {
+  const { toast } = useToast();
 
-const Index = () => {
-  const navigate = useNavigate();
-  const { setCategory } = useScenarioStore();
-  const [selectedCategory, setSelectedCategory] = useState<ScenarioCategory | null>(null);
+  const testOpenAI = async () => {
+    toast({
+      title: "Testing OpenAI Connection",
+      description: "Please wait...",
+      duration: 2000,
+    });
 
-  const handleCategorySelect = (category: ScenarioCategory) => {
-    setSelectedCategory(category);
-    setCategory(category);
-    navigate('/scenario-setup');
+    const result = await openaiTest.testApiKey();
+
+    toast({
+      title: result.success ? "Success!" : "Error",
+      description: result.message,
+      variant: result.success ? "default" : "destructive",
+      duration: 5000,
+    });
   };
 
   return (
-    <div className="min-h-screen bg-background animate-in">
-      <div className="content-container py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">
-            Crisis Simulation Exercise
-          </h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Select a scenario category to begin your crisis management exercise. Each category presents unique challenges and decision points.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {CATEGORIES.map((category) => (
-            <Card 
-              key={category.id}
-              className={`transition-all duration-300 cursor-pointer hover:shadow-lg ${
-                selectedCategory === category.id ? 'ring-2 ring-primary' : ''
-              }`}
-              onClick={() => handleCategorySelect(category.id)}
-            >
-              <CardHeader>
-                <CardTitle>{category.title}</CardTitle>
-                <CardDescription>{category.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  variant={selectedCategory === category.id ? "default" : "outline"}
-                  className="w-full"
-                >
-                  Select Category
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+    <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-4xl font-bold mb-8">Crisis Simulation</h1>
+      <div className="space-y-4">
+        <Button onClick={testOpenAI} variant="outline" className="w-full">
+          Test OpenAI Connection
+        </Button>
       </div>
     </div>
   );
-};
-
-export default Index;
+}

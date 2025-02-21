@@ -1,4 +1,3 @@
-
 import { StakeholderMessage, CrisisEvent } from '@/types/crisis';
 
 interface StakeholderInteraction {
@@ -87,7 +86,6 @@ class CrisisMemoryManager {
         sentiment
       });
 
-      // Update relationship status based on recent interactions
       const recentSentiments = memory.pastInteractions.slice(-3).map(i => i.sentiment);
       const positiveCount = recentSentiments.filter(s => s === 'positive').length;
       const negativeCount = recentSentiments.filter(s => s === 'negative').length;
@@ -97,7 +95,6 @@ class CrisisMemoryManager {
       else memory.relationshipStatus = 'neutral';
     }
 
-    // Update priority based on relationship and crisis severity
     memory.priority = this.crisisState.severity === 'high' || memory.relationshipStatus === 'hostile' 
       ? 'high' 
       : memory.relationshipStatus === 'supportive' ? 'low' : 'medium';
@@ -120,7 +117,6 @@ class CrisisMemoryManager {
     const baseActions = new Set(['Monitor the situation', 'Engage with stakeholders']);
     const dynamicActions = new Set<string>();
 
-    // Add context-specific actions based on crisis state
     if (this.crisisState.mediaAttention > 60) {
       dynamicActions.add('Issue a public statement');
       dynamicActions.add('Schedule a press conference');
@@ -136,7 +132,6 @@ class CrisisMemoryManager {
       dynamicActions.add('Implement feedback system');
     }
 
-    // Filter out used actions
     return [...baseActions, ...dynamicActions].filter(action => !this.crisisState.usedActions.has(action));
   }
 
@@ -148,7 +143,6 @@ class CrisisMemoryManager {
     this.crisisState.mediaAttention = Math.max(0, Math.min(100, this.crisisState.mediaAttention + impact.media));
     this.crisisState.internalMorale = Math.max(0, Math.min(100, this.crisisState.internalMorale + impact.morale));
 
-    // Update severity based on state
     if (this.crisisState.publicTrust < 30 || this.crisisState.mediaAttention > 80) {
       this.crisisState.severity = 'high';
     } else if (this.crisisState.publicTrust < 60 || this.crisisState.mediaAttention > 50) {
@@ -179,6 +173,49 @@ class CrisisMemoryManager {
     };
   }
 
+  shouldEscalate(event: CrisisEvent): boolean {
+    const recentEvents = this.getRecentEvents();
+    const hasHighSeverityEvents = recentEvents.some(e => e.severity === 'high');
+    return this.crisisState.severity === 'high' || hasHighSeverityEvents;
+  }
+
+  addInteraction(stakeholder: string, messageId: string, response: string): void {
+    this.updateStakeholderMemory(stakeholder, {
+      type: 'text',
+      messageId,
+      response
+    });
+  }
+
+  getNPCStatus(stakeholder: string): {
+    relationshipStatus: 'hostile' | 'neutral' | 'supportive';
+  } | null {
+    const memory = this.stakeholderMemory.get(stakeholder);
+    if (!memory) return null;
+    return {
+      relationshipStatus: memory.relationshipStatus
+    };
+  }
+
+  generateResponse(stakeholder: string, defaultResponse: string): string {
+    const memory = this.stakeholderMemory.get(stakeholder);
+    if (!memory) return defaultResponse;
+
+    const relationship = memory.relationshipStatus;
+    const recentInteractions = memory.pastInteractions.slice(-3);
+    
+    if (relationship === 'hostile') {
+      return `${defaultResponse} We expect a more thorough response given recent developments.`;
+    } else if (relationship === 'supportive') {
+      return `${defaultResponse} We appreciate your continued cooperation.`;
+    }
+    return defaultResponse;
+  }
+
+  private getRecentEvents(): CrisisEvent[] {
+    return [];
+  }
+
   private calculateActionImpact(action: string, events: CrisisEvent[]) {
     const baseImpact = {
       trust: 0,
@@ -199,7 +236,6 @@ class CrisisMemoryManager {
         baseImpact.trust += 10;
         baseImpact.media -= 5;
         break;
-      // Add more action impacts here
     }
 
     return baseImpact;

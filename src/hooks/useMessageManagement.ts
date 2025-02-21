@@ -22,7 +22,7 @@ export const useMessageManagement = () => {
     removeMessage(messageId);
 
     const npcStatus = crisisMemoryManager.getNPCStatus(message.sender);
-    if (npcStatus && npcStatus.relationshipStatus === 'negative') {
+    if (npcStatus && npcStatus.relationshipStatus === 'hostile') {
       const followUp: StakeholderMessage = {
         id: Math.random().toString(36).substr(2, 9),
         sender: message.sender,

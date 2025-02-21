@@ -231,14 +231,19 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
         setPendingUpdates(prev => prev.slice(1));
 
         if (update.type === 'stakeholder' && update.severity === 'high') {
-          const message = generateStakeholderMessage(
-            crisisMemoryManager.getCrisisState(),
-            events
-          );
+          const crisisState = crisisMemoryManager.getCrisisState();
+          const stakeholderName = update.content.split(':')[0];
+          
+          const message = {
+            type: 'email' as const,
+            content: `Urgent response needed regarding ${update.content}`,
+            urgency: 'urgent' as const
+          };
+
           if (message) {
             addMessage({
               id: Math.random().toString(36).substr(2, 9),
-              sender: update.content.split(':')[0],
+              sender: stakeholderName,
               content: message.content,
               timestamp: Date.now(),
               type: message.type,
@@ -252,7 +257,7 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     }, 3000);
 
     return () => clearInterval(updateInterval);
-  }, [isExerciseActive, isExerciseEnded, pendingUpdates, events]);
+  }, [isExerciseActive, isExerciseEnded, pendingUpdates, events, addEvent, addMessage]);
 
   const value = {
     config,

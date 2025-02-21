@@ -35,6 +35,15 @@ export const StakeholderMessages = ({
   const [responses, setResponses] = useState<{[key: string]: string}>({});
   const [timeLeft, setTimeLeft] = useState<{[key: string]: number}>({});
   const [dismissTimers, setDismissTimers] = useState<{[key: string]: NodeJS.Timeout}>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -103,7 +112,7 @@ export const StakeholderMessages = ({
   };
 
   return (
-    <div className="fixed bottom-4 right-4 space-y-4 max-w-sm z-50">
+    <div className="fixed bottom-4 right-4 space-y-4 max-w-sm z-50 max-h-[80vh] overflow-y-auto">
       {messages.map((message) => (
         <Card key={message.id} className="p-4 animate-slide-in">
           <div className="flex justify-between items-start mb-2">
@@ -144,7 +153,7 @@ export const StakeholderMessages = ({
                 {message.responseOptions.map((option, index) => (
                   <Button
                     key={index}
-                    variant="outline"
+                    variant={option.impact === 'positive' ? 'default' : option.impact === 'negative' ? 'destructive' : 'outline'}
                     size="sm"
                     className="w-full text-left justify-start"
                     onClick={() => {
@@ -165,7 +174,6 @@ export const StakeholderMessages = ({
                   ...prev,
                   [message.id]: e.target.value
                 }));
-                // Cancel the dismiss timer if user starts typing
                 cancelDismissTimer(message.id);
               }}
               placeholder="Type your response..."
@@ -188,6 +196,7 @@ export const StakeholderMessages = ({
           </div>
         </Card>
       ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 };

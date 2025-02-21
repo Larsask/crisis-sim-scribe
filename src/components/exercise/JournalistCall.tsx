@@ -20,6 +20,7 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
   const [textMode, setTextMode] = useState(false);
   const [textResponse, setTextResponse] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState("This is Sarah Chen from Global News. We've received reports about the ongoing situation. Can you provide an official statement?");
+  const [hasResponded, setHasResponded] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -82,6 +83,31 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
     }
   };
 
+  const handleResponse = async (response: string) => {
+    if (hasResponded) {
+      return;
+    }
+
+    setHasResponded(true);
+    onResponse(response);
+
+    // Simulate Sarah Chen's reaction
+    const reactions = [
+      "I understand your position, but our viewers deserve more details. Can you elaborate?",
+      "That's an interesting perspective. How do you respond to critics who say otherwise?",
+      "We'll be running this story in tonight's news. Would you like to add anything else?"
+    ];
+    
+    const newQuestion = reactions[Math.floor(Math.random() * reactions.length)];
+    setCurrentQuestion(newQuestion);
+    
+    if (!textMode) {
+      await playJournalistVoice();
+    }
+    
+    setHasResponded(false);
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -122,13 +148,6 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
     }
   };
 
-  const handleClose = () => {
-    if (isRecording) {
-      stopRecording();
-    }
-    onClose();
-  };
-
   const predefinedResponses = [
     "We take these reports seriously and are conducting a thorough review.",
     "We're implementing immediate measures to address the situation.",
@@ -149,7 +168,7 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
                   key={index}
                   variant="outline"
                   className="w-full text-left justify-start h-auto py-3 px-4"
-                  onClick={() => onResponse(response)}
+                  onClick={() => handleResponse(response)}
                 >
                   {response}
                 </Button>
@@ -164,7 +183,7 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
               />
               <Button 
                 className="w-full"
-                onClick={() => textResponse.trim() && onResponse(textResponse)}
+                onClick={() => textResponse.trim() && handleResponse(textResponse)}
                 disabled={!textResponse.trim()}
               >
                 Send Custom Response
@@ -182,7 +201,7 @@ export const JournalistCall = ({ onClose, onResponse }: JournalistCallProps) => 
             variant="outline"
             size="icon"
             className="h-12 w-12 rounded-full bg-red-500 hover:bg-red-600"
-            onClick={handleClose}
+            onClick={onClose}
           >
             <PhoneOff className="h-6 w-6 text-white" />
           </Button>

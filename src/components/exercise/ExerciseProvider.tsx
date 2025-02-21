@@ -461,9 +461,9 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
     if (!isExerciseActive) return;
 
     const intervalTime = {
-      low: 60000, // 1 minute
-      medium: 30000, // 30 seconds
-      high: 15000 // 15 seconds
+      low: 60000,
+      medium: 30000,
+      high: 15000
     }[config.timeBasedEvents.frequency];
 
     const interval = setInterval(() => {
@@ -473,15 +473,15 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
       );
 
       if (filteredEvents.length > 0) {
-        const newMessages = filteredEvents.map(event => ({
+        const newMessages: StakeholderMessage[] = filteredEvents.map(event => ({
           id: Math.random().toString(36).substr(2, 9),
           sender: event.type === 'media' ? 'Press Office' : 'Crisis Team',
           content: event.content,
           timestamp: Date.now(),
-          urgency: event.severity,
+          urgency: mapSeverityToUrgency(event.severity),
           type: 'text',
           status: 'unread',
-          responseDeadline: Date.now() + 300000, // 5 minutes
+          responseDeadline: Date.now() + 300000,
           responseOptions: event.options?.map(opt => ({
             text: opt.text,
             impact: opt.impact,
@@ -495,6 +495,17 @@ export const ExerciseProvider = ({ children }: { children: React.ReactNode }) =>
 
     return () => clearInterval(interval);
   }, [isExerciseActive, config.timeBasedEvents.frequency]);
+
+  const mapSeverityToUrgency = (severity: 'low' | 'medium' | 'high'): 'normal' | 'urgent' | 'critical' => {
+    switch (severity) {
+      case 'low':
+        return 'normal';
+      case 'medium':
+        return 'urgent';
+      case 'high':
+        return 'critical';
+    }
+  };
 
   const handleStakeholderResponse = (messageId: string, response: string) => {
     handleDecision(response, true);

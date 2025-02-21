@@ -2,13 +2,18 @@
 import { supabase } from '@/integrations/supabase/client';
 import { AIResponse } from '@/types/crisis-enhanced';
 
+interface AIRequestContext {
+  pastDecisions: string[];
+  currentSeverity: 'low' | 'medium' | 'high';
+  stakeholderMood: 'positive' | 'neutral' | 'negative';
+  style?: 'concise' | 'detailed' | 'analytical';
+  tone?: 'formal' | 'neutral' | 'urgent';
+  includeSuggestions?: boolean;
+}
+
 const generateAIResponse = async (
   decision: string,
-  context: {
-    pastDecisions: string[];
-    currentSeverity: 'low' | 'medium' | 'high';
-    stakeholderMood: 'positive' | 'neutral' | 'negative';
-  }
+  context: AIRequestContext
 ): Promise<AIResponse> => {
   try {
     const { data: secretData, error: secretError } = await supabase
@@ -25,11 +30,11 @@ const generateAIResponse = async (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4-turbo-preview',
         messages: [
           {
             role: 'system',
-            content: `You are an AI crisis management assistant. Analyze decisions and generate realistic, context-aware responses. Consider past decisions, stakeholder expectations, and potential consequences. Current crisis severity: ${context.currentSeverity}. Stakeholder mood: ${context.stakeholderMood}.`
+            content: `You are an AI crisis management assistant. Analyze decisions and generate realistic, context-aware responses. Consider past decisions, stakeholder expectations, and potential consequences. Current crisis severity: ${context.currentSeverity}. Stakeholder mood: ${context.stakeholderMood}. Style: ${context.style || 'neutral'}. Tone: ${context.tone || 'formal'}.`
           },
           {
             role: 'user',
@@ -42,8 +47,6 @@ const generateAIResponse = async (
     const data = await response.json();
     const result = data.choices[0].message.content;
 
-    // Parse the AI response into our structured format
-    // This is a simplified example - you'd need to structure the prompt to get formatted responses
     return {
       mainResponse: result,
       consequences: ["Immediate impact on public trust", "Media coverage intensifies"],
@@ -64,7 +67,6 @@ const generateAIResponse = async (
     };
   } catch (error) {
     console.error('Error generating AI response:', error);
-    // Provide a fallback response if AI generation fails
     return {
       mainResponse: "Your decision has been acknowledged. Stakeholders are reviewing the situation.",
       consequences: ["Impact being assessed"],

@@ -1,3 +1,4 @@
+
 export interface TimeBasedEvent {
   triggerTime: number; // in milliseconds from start
   type: 'media' | 'stakeholder' | 'internal' | 'government' | 'competitor';

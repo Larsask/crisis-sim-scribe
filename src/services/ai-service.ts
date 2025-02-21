@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { AIResponse } from '@/types/crisis-enhanced';
 import { DecisionOption } from '@/types/crisis';
@@ -23,24 +24,42 @@ interface NewOptionsContext {
   pastEvents: any[];
 }
 
+const DEFAULT_OPTIONS: DecisionOption[] = [
+  {
+    id: '1',
+    text: 'Monitor the situation',
+    impact: 'low',
+    consequence: 'Allows time for proper assessment'
+  },
+  {
+    id: '2',
+    text: 'Engage with stakeholders',
+    impact: 'medium',
+    consequence: 'Maintains communication channels'
+  }
+];
+
 export const aiService = {
-  generateNewOptions: async (context: NewOptionsContext): Promise<DecisionOption[]> => {
+  async generateNewOptions(context: NewOptionsContext): Promise<DecisionOption[]> {
     try {
       const { data: secretData, error: secretError } = await supabase
         .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
 
-      if (secretError || !secretData) {
-        throw new Error('Failed to retrieve API key');
+      if (secretError || !secretData || !secretData[0]) {
+        console.error('Failed to retrieve API key:', secretError);
+        return DEFAULT_OPTIONS;
       }
+
+      const apiKey = secretData[0].value;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${secretData}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'system',
@@ -61,8 +80,19 @@ export const aiService = {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      const result = data.choices[0].message.content;
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+
+      const result = data.choices[0]?.message?.content;
+      if (!result) {
+        throw new Error('No content in OpenAI response');
+      }
 
       // Parse the response into DecisionOption format
       const options = result.split('\n')
@@ -77,40 +107,32 @@ export const aiService = {
       return options.slice(0, 4); // Return max 4 options
     } catch (error) {
       console.error('Error generating new options:', error);
-      return [
-        {
-          id: '1',
-          text: 'Monitor the situation',
-          impact: 'low',
-          consequence: 'Allows time for proper assessment'
-        },
-        {
-          id: '2',
-          text: 'Engage with stakeholders',
-          impact: 'medium',
-          consequence: 'Maintains communication channels'
-        }
-      ];
+      return DEFAULT_OPTIONS;
     }
   },
 
-  generateResponse: async (decision: string, context: AIRequestContext): Promise<AIResponse> => {
+  async generateResponse(
+    decision: string,
+    context: AIRequestContext
+  ): Promise<AIResponse> {
     try {
       const { data: secretData, error: secretError } = await supabase
         .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
 
-      if (secretError || !secretData) {
+      if (secretError || !secretData || !secretData[0]) {
         throw new Error('Failed to retrieve API key');
       }
+
+      const apiKey = secretData[0].value;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${secretData}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'system',
@@ -143,12 +165,23 @@ export const aiService = {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      const result = data.choices[0].message.content;
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+
+      const result = data.choices[0]?.message?.content;
+      if (!result) {
+        throw new Error('No content in OpenAI response');
+      }
 
       // Parse response into structured format
       const sections = result.split('\n\n');
-      const mainResponse = sections[0] || '';
+      const mainResponse = sections[0] || 'Response being analyzed...';
       
       const consequences = sections[1]?.split('\n')
         .filter(line => line.startsWith('-'))
@@ -200,23 +233,25 @@ export const aiService = {
     }
   },
 
-  generateNewsArticle: async ({ headline, context, tone }: NewsArticleParams): Promise<string> => {
+  async generateNewsArticle({ headline, context, tone }: NewsArticleParams): Promise<string> {
     try {
       const { data: secretData, error: secretError } = await supabase
         .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
 
-      if (secretError || !secretData) {
+      if (secretError || !secretData || !secretData[0]) {
         throw new Error('Failed to retrieve API key');
       }
+
+      const apiKey = secretData[0].value;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${secretData}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'system',
@@ -242,31 +277,46 @@ export const aiService = {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      return data.choices[0].message.content;
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+
+      const result = data.choices[0]?.message?.content;
+      if (!result) {
+        throw new Error('No content in OpenAI response');
+      }
+
+      return result;
     } catch (error) {
       console.error('Error generating news article:', error);
       return `Breaking News: ${headline}\n\nDeveloping story. More details to follow.`;
     }
   },
 
-  generateStakeholderUpdate: async (crisisState: any, pastEvents: any[]): Promise<string> => {
+  async generateStakeholderUpdate(crisisState: any, pastEvents: any[]): Promise<string> {
     try {
       const { data: secretData, error: secretError } = await supabase
         .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
 
-      if (secretError || !secretData) {
+      if (secretError || !secretData || !secretData[0]) {
         throw new Error('Failed to retrieve API key');
       }
+
+      const apiKey = secretData[0].value;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${secretData}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-3.5-turbo',
           messages: [
             {
               role: 'system',
@@ -287,8 +337,21 @@ export const aiService = {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      return data.choices[0].message.content;
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+
+      const result = data.choices[0]?.message?.content;
+      if (!result) {
+        throw new Error('No content in OpenAI response');
+      }
+
+      return result;
     } catch (error) {
       console.error('Error generating stakeholder update:', error);
       return `Key stakeholders are monitoring the situation closely and requesting updates.`;

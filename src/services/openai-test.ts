@@ -8,7 +8,7 @@ export const openaiTest = {
       const { data: secretData, error: secretError } = await supabase
         .rpc('get_secret', { secret_name: 'OPENAI_API_KEY' });
 
-      if (secretError || !secretData) {
+      if (secretError || !secretData || !secretData[0]) {
         console.error('Failed to retrieve API key:', secretError);
         return {
           success: false,
@@ -16,11 +16,13 @@ export const openaiTest = {
         };
       }
 
+      const apiKey = secretData[0].value;
+
       // Test the API key with a simple completion request
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${secretData}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

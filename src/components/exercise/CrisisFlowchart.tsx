@@ -33,8 +33,8 @@ interface CrisisFlowchartProps {
 }
 
 export const CrisisFlowchart = ({
-  messages,
-  currentOptions,
+  messages = [], // Provide default empty array
+  currentOptions = [], // Provide default empty array
   onDecision
 }: CrisisFlowchartProps) => {
   // Convert messages to nodes
@@ -64,7 +64,7 @@ export const CrisisFlowchart = ({
   }));
 
   // Add option nodes if there are current options
-  const optionNodes: Node[] = (currentOptions || []).map((opt, index) => ({
+  const optionNodes: Node[] = currentOptions.map((opt, index) => ({
     id: `option-${index}`,
     type: 'default',
     data: {
@@ -82,9 +82,9 @@ export const CrisisFlowchart = ({
     className: 'crisis-node-option'
   }));
 
-  // Create edges between related nodes
-  const initialEdges: Edge[] = messages.reduce((edges: Edge[], msg, index) => {
-    if (index > 0) {
+  // Create edges between related nodes, only if we have messages
+  const initialEdges: Edge[] = messages.length > 1 ? messages.reduce((edges: Edge[], msg, index) => {
+    if (index > 0 && messages[index - 1]) { // Check if previous message exists
       edges.push({
         id: `e${index}`,
         source: messages[index - 1].id,
@@ -93,15 +93,15 @@ export const CrisisFlowchart = ({
       });
     }
     return edges;
-  }, []);
+  }, []) : [];
 
-  // Add edges for options
-  const optionEdges: Edge[] = (currentOptions || []).map((_, index) => ({
+  // Add edges for options, only if we have messages and options
+  const optionEdges: Edge[] = messages.length > 0 ? currentOptions.map((_, index) => ({
     id: `eo${index}`,
     source: messages[messages.length - 1].id,
     target: `option-${index}`,
     type: 'smoothstep',
-  }));
+  })) : [];
 
   const [nodes, setNodes, onNodesChange] = useNodesState([...initialNodes, ...optionNodes]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([...initialEdges, ...optionEdges]);

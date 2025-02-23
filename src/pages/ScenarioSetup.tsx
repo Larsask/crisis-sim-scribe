@@ -3,14 +3,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useScenarioStore } from '@/store/scenarioStore';
+import { useScenarioStore, ScenarioCategory } from '@/store/scenarioStore';
 import { scenarios } from '@/data/scenarios';
 import { ArrowLeft } from 'lucide-react';
 
-// Categories for the crisis simulation
-const CATEGORIES = [
+// Categories for the crisis simulation with proper typing
+const CATEGORIES: Array<{
+  id: ScenarioCategory;
+  name: string;
+  description: string;
+}> = [
   {
-    id: 'cyber',
+    id: 'cyberattack',
     name: 'Cyber Attacks',
     description: 'Handle cybersecurity incidents and data breaches'
   },
@@ -38,6 +42,11 @@ const CATEGORIES = [
     id: 'real-time',
     name: 'Real-Time Events',
     description: 'Respond to ongoing operational incidents'
+  },
+  {
+    id: 'hybrid',
+    name: 'Hybrid Threats',
+    description: 'Handle complex multi-vector incidents'
   }
 ];
 
@@ -52,9 +61,9 @@ const ScenarioSetup = () => {
     duration: selectedDuration
   } = useScenarioStore();
   
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ScenarioCategory | null>(null);
 
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = (categoryId: ScenarioCategory) => {
     setSelectedCategory(categoryId);
     setCategory(categoryId);
   };

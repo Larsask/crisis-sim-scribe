@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,7 @@ export const JournalistCall = ({ onClose, onResponse, onDecline }: JournalistCal
       setAiReply(responseData.reply);
 
     } catch (error) {
-      console.error('Error sending message to AI:", error);
+      console.error('Error sending message to AI:', error);
       toast({
         title: "Error",
         description: "Failed to send message to AI journalist.",

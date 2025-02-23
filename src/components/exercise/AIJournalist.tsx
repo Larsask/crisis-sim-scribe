@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,7 +102,7 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
       if (!apiKey) return;
 
       // Send user message to AI
-      const res = await fetch(`https://api.elevenlabs.io/v1/conversational-agent/send-message`, {
+      const res = await fetch('https://api.elevenlabs.io/v1/conversational-agent/send-message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +120,7 @@ export const AIJournalist = ({ onResponse, onDecline }: AIJournalistProps) => {
       setAiReply(responseData.reply); // Store AI reply
 
     } catch (error) {
-      console.error('Error sending message:", error);
+      console.error('Error sending message:', error);
       toast({
         title: "Error",
         description: "Failed to send message to AI journalist.",
